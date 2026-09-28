@@ -156,7 +156,7 @@ These results leave the tradeoffs on binary trees open. Independent subtrees can
 
 Let $B_h$ be the complete binary tree of height $h\ge2$, where height counts vertices on a longest root-to-leaf path. Then $B_h$ has $n=2^h-1$ vertices. Write $\Wseq^\star(B_h,s)$ and $\Wpar^\star(B_h,s)$ for the minimum sequential and parallel work with space at most $s$, and $\Dpar^\star(B_h,s)$ for the minimum parallel depth. Also write $\lambda(x)=1+\log^*x$, where $\log^*x$ is the number of iterated binary logarithms needed to reach a value at most one.
 
-\begin{theorem}[Optimal space--work tradeoffs and parallel depth, informal]
+\begin{theorem}[Informal, optimal space--work tradeoffs and parallel depth; see \cref{thm:seq-upper,thm:parallel-upper,thm:universal-work,thm:weighted}]
 \label{thm:main}
 For every integer $h+1\le s\le n$,
 \begin{equation}
@@ -170,7 +170,6 @@ The optimal parallel depth is
 \end{equation}
 Work and depth are minimized separately. All implicit constants are absolute and uniform over the entire feasible interval.
 \end{theorem}
-See \cref{thm:seq-upper,thm:parallel-upper,thm:universal-work,thm:weighted} for the formal bounds.
 
 At the minimum budget $s=h+1$, a single parallel construction attains
 \begin{equation}
