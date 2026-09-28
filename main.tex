@@ -15,6 +15,7 @@
 \addbibresource{references.bib}
 \usepackage[hidelinks]{hyperref}
 \usepackage[nameinlink,noabbrev]{cleveref}
+\usepackage{xcolor}
 \makeatletter
 \providecommand{\theHALG@line}{}
 \renewcommand{\theHALG@line}{\thealgorithm.\arabic{ALG@line}}
@@ -66,6 +67,7 @@
 \newcommand{\Dpar}{D_{\mathrm{par}}}
 \newcommand{\cstar}{^{\star}}
 \newcommand{\pos}[1]{(#1)_+}
+\newcommand{\mingyu}[1]{{\color{magenta}\footnotesize [MINGYU: #1]}} %todo: remove.
 \setlist{itemsep=2pt,topsep=4pt}
 \setlength{\emergencystretch}{2em}
 \allowdisplaybreaks[1]
@@ -98,7 +100,7 @@ Seoul National University, Seoul 08826, Republic of Korea}
 \vspace{-1.4em}
 \begin{abstract}
 
-Pebble games model computations under a fixed space budget. Spooky pebbling allows quantum memory to be released by measurement, with the resulting phases corrected later. We study two-input computations with binary-tree dependencies and determine their optimal work and parallel depth. For the complete tree $B_h$ with with $n=2^h-1$ vertices and every space budget $h+1\le s\le n$, we give an algorithm with asymptotically optimal work $\Theta(nh/\log(s+1))$. We also construct a parallel schedule with optimal depth
+Pebble games model computations under a fixed space budget. Spooky pebbling allows quantum memory to be released by measurement, with the resulting phases corrected later. We study two-input computations with binary-tree dependencies and determine their optimal work and parallel depth. For the complete tree $B_h$ with $n=2^h-1$ vertices and every space budget $h+1\le s\le n$, we give an algorithm with asymptotically optimal work $\Theta(nh/\log(s+1))$. We also construct a parallel schedule with optimal depth
 \[
  \Theta\!\left(h+\frac ns
  \max\!\left\{\frac{h}{\log(s+1)},\,1+\log^*h\right\}\right).
@@ -148,7 +150,7 @@ On more general dependency graphs, KSS studied the hardness of minimizing pebble
 
 Another way to reduce execution time is to perform independent operations in parallel. To formalize this in reversible computing, Blocki, Holman, and Lee introduced parallel reversible pebbling~\cite{BHL2022}. Combining this framework with spooky pebbling, Kahanamoku-Meyer, Ragavan, and Van Kirk (KMRV) introduced parallel spooky pebbling, which also allows registers to be released by measurement~\cite{KMRV2026}. In their model, operations are executed in synchronous rounds: the number of rounds determines the depth, while the total number of computations and uncomputations determines the work. Performing multiple operations in a single round can therefore reduce depth without increasing total work.
 
-KMRV studied this model on a linear chain of \(\ell\) vertices, showing that reaching the target and clearing all values requires an optimal \(2\ell\) rounds using \(O(\log\ell)\) pebbles~\cite{KMRV2026}. They also applied their construction to reduce the depth of arithmetic in Regev's factoring algorithm.
+KMRV studied this model on a linear chain of $\ell$ vertices, showing that reaching the target and clearing all values requires an optimal $2\ell$ rounds using $O(\log\ell)$ pebbles~\cite{KMRV2026}. They also applied their construction to reduce the depth of arithmetic in Regev's factoring algorithm.
 
 These results leave the tradeoffs on binary trees open. Independent subtrees can be computed in parallel, but both child values must be available to compute or uncompute their parent. Under a fixed space budget, a schedule must decide which subtrees to process concurrently and which values to retain for cleanup. We ask what work and depth are optimal at each space budget, and whether a single strategy can minimize both.
 
@@ -156,7 +158,8 @@ These results leave the tradeoffs on binary trees open. Independent subtrees can
 
 Let $B_h$ be the complete binary tree of height $h\ge2$, where height counts vertices on a longest root-to-leaf path. Then $B_h$ has $n=2^h-1$ vertices. Write $\Wseq^\star(B_h,s)$ and $\Wpar^\star(B_h,s)$ for the minimum sequential and parallel work with space at most $s$, and $\Dpar^\star(B_h,s)$ for the minimum parallel depth. Also write $\lambda(x)=1+\log^*x$, where $\log^*x$ is the number of iterated binary logarithms needed to reach a value at most one.
 
-\begin{theorem}[Informal, optimal space--work tradeoffs and parallel depth; see \cref{thm:seq-upper,thm:parallel-upper,thm:universal-work,thm:weighted}]
+\begin{theorem}[Informal, optimal space--work tradeoffs and parallel depth;
+see \cref{thm:seq-upper,thm:parallel-upper,thm:universal-work,thm:weighted}]
 \label{thm:main}
 For every integer $h+1\le s\le n$,
 \begin{equation}
@@ -170,6 +173,7 @@ The optimal parallel depth is
 \end{equation}
 Work and depth are minimized separately. All implicit constants are absolute and uniform over the entire feasible interval.
 \end{theorem}
+
 
 At the minimum budget $s=h+1$, a single parallel construction attains
 \begin{equation}
@@ -208,13 +212,15 @@ The matching depth lower bound requires more than counting operations. A value m
 
 \subsection{Fixed dependency trees}
 
-A rooted full binary tree $T=(V,E)$ has either zero or two children at each vertex. Edges point from children to their parent, so the root $r$ is the unique sink. We write $\pred(v)$ for the children of $v$, and $\parv(v)$ for its parent, when it exists. The height $H(T)$ is the number of vertices on a longest leaf-to-root path. The complete binary tree $B_h$ has $2^h-1$ vertices and $2^{h-1}$ leaves. All logarithms are binary unless a different base is indicated.
+A rooted full binary tree $T=(V,E)$ has either zero or two children at each vertex. Edges point from children to their parent, so the root $r$ is the unique sink. We write $\pred(v)$ for the children of $v$, and $\parv(v)$ for its parent, when it exists. The height $H(T)$ is the number of vertices on a longest leaf-to-root path. We fix the dependency tree $T$. The complete binary tree $B_h$ has
+$2^h-1$ vertices and $2^{h-1}$ leaves.
+All logarithms are binary unless stated otherwise.
 
 An internal vertex $v$ computes a function $f_v$ from its two child values using an out-of-place unitary $U_v$ satisfying
 \[
 U_v\ket{a}\ket{b}\ket{0}=\ket{a}\ket{b}\ket{f_v(a,b)}.
 \]
-Applying $U_v^\dagger$ uncomputes this value when both child values are available. Leaf values are prepared from external inputs that remain available throughout the computation. The functions $f_v$ may differ between vertices and need not be associative or invertible. We fix their dependency tree.
+Applying $U_v^\dagger$ uncomputes this value when both child values are available. Leaf values have no dependencies and can be loaded and erased at any time during the computation. The functions $f_v$ may differ between vertices and need not be associative or invertible.
 
 \subsection{Configurations and actions}
 
@@ -227,13 +233,13 @@ A configuration is a pair $(P,G)$ of disjoint subsets of $V$. Vertices in $P$ ha
 \Ghost(v) & v\in P & (P\setminus\{v\},\ G\cup\{v\}) & 0
 \end{array}
 \]
-When $v\in G$, $\Peb(v)$ also applies the single-qubit phase corrections specified by the stored measurement outcome, clearing the ghost.
+When $v\in G$, $\Peb(v)$ also applies the single-qubit phase corrections specified by the stored measurement outcome, clearing the ghost. \mingyu{We should discuss why work doesn't count for ghost. And discuss about kss setting, and why this gives asymptotically same work.}
 
 The initial configuration is $(\varnothing,\varnothing)$, and the goal is $(\{r\},\varnothing)$: retain the root value and clear every other pebble and every ghost.
 
 \subsection{Sequential and parallel execution}
 
-A sequential strategy executes one action at a time. Each $\Peb$, $\Unp$, or $\Ghost$ action is one step.
+A sequential strategy executes one action at a time. Each $\Peb$, $\Unp$, or $\Ghost$ action is one step. Notably, 
 
 A parallel strategy executes actions in rounds with two phases, following the execution rule of KMRV~\cite[Section~2.1]{KMRV2026}. In the first phase, $\Peb$ and $\Unp$ actions may run simultaneously if their active sets
 \begin{equation}
@@ -252,15 +258,32 @@ U_t=P_{t-1}\cup P_t^+, \qquad s(\mathcal P)=\max_{1\le t\le D}|U_t|, \qquad \Are
 \end{equation}
 Here $\Area$ is cumulative storage. External input registers and temporary registers used inside an action are accounted for separately in circuit resource estimates. Classical storage and control are unrestricted.
 
-Work is $W=\#\Peb+\#\Unp$. Measurement, reset, and single-qubit phase corrections are outside this count; recomputations and uncomputations used to clear ghosts are included. Leaves have no dependencies, so their placements and uncomputations are always supported. If $\Pi,u,g$ count placements, uncomputations, and ghostings in a complete strategy, then $u+g=\Pi-1$. Consequently its total action count $T=2\Pi-1$ satisfies $W\le T<2W$.
+Work counts function computations and uncomputations: $W = \#\Peb + \#\Unp$. $\Ghost$ releases a register by measurement without evaluating a vertex function, so it contributes no work.
 
-We write $\Wseq^\star(T,s)$, $\Wpar^\star(T,s)$, and $\Dpar^\star(T,s)$ for the minimum sequential work, parallel work, and parallel depth under a space budget $s$. Infeasible instances have value $+\infty$. For $B_h$ with $h\ge2$, the minimum feasible budget is $h+1$~\cite{Cook1973,KSS2025}; our complete-tree tradeoffs concern $h+1\le s\le2^h-1$.
-
-Serializing each parallel round in the order $\Unp$, $\Peb$, $\Ghost$ preserves legality, work, and placement count. Disjoint active sets prevent interference, and intermediate pebble sets stay within $U_t$. Conversely, one sequential action fits in one round. Hence
+Let $\Pi$ denote the total number of pebble placements ($\#\Peb$) in a complete strategy. Because every placed pebble except the final root must eventually be removed—either by $\Unp$ or by $\Ghost$—the total number of removals is $\Pi - 1$. Consequently, the total action count is $N_{\text{step}} = \Pi + (\Pi - 1) = 2\Pi - 1$, which satisfies
 \begin{equation}
- \Wseq^\star(T,s)=\Wpar^\star(T,s).
- \label{eq:serialize}
+    W \le N_{\text{step}} < 2W.
 \end{equation}
+KSS~\cite{KSS2025} count ghosting as a step, whereas
+KMRV~\cite{KMRV2026} count only computations and uncomputations.
+Since $W$ and $N_{\mathrm{step}}$ differ by at most a factor of two,
+our asymptotic work bounds are unchanged under either convention.
+
+
+For a dependency tree $T$ and an integer space budget $s$, we denote by $\Wseq^\star(T,s)$ and $\Wpar^\star(T,s)$ the minimum sequential and parallel work, respectively, and by $\Dpar^\star(T,s)$ the minimum parallel depth. If no valid pebbling strategy exists within space $s$, the corresponding value is taken to be $+\infty$.
+
+For complete binary trees $B_h$ of height $h \ge 2$, the space budget has a natural feasible range. Computing the root requires at least $h+1$ pebbles even when measurement-assisted register release is permitted~\cite{Cook1973,KSS2025}. At the other extreme, a budget of $n = 2^h-1$ pebbles allows the entire tree to be held in quantum memory simultaneously. Thus, throughout this paper, our tradeoffs for complete trees focus on the non-trivial feasible interval
+\begin{equation}
+    h+1 \le s \le 2^h-1.
+\end{equation}
+
+Any parallel strategy can be serialized into a sequential one by executing each round's actions in sequence—first $\Unp$, then $\Peb$, and finally $\Ghost$. Because active sets in the first phase are pairwise disjoint, this order preserves preconditions without interference, and all intermediate pebble configurations remain within $U_t$. Conversely, any sequential step can be viewed as a single-action parallel round, which implies
+\begin{equation}
+    \Wseq^\star(T,s) = \Wpar^\star(T,s).
+    \label{eq:serialize}
+\end{equation}
+
+
 
 \section{Block cleanup constructions}
 \label{sec:constructions}
