@@ -213,11 +213,11 @@ The matching depth lower bound requires more than counting operations. A value m
 
 A rooted full binary tree $T=(V,E)$ has either zero or two children at each vertex. Edges point from children to their parent, so the root $r$ is the unique sink. We write $\pred(v)$ for the children of $v$, and $\parv(v)$ for its parent, when it exists. The height $H(T)$ is the number of vertices on a longest leaf-to-root path. The complete binary tree $B_h$ has $2^h-1$ vertices and $2^{h-1}$ leaves. All logarithms are binary unless a different base is indicated.
 
-An internal vertex $v$ computes a function $f_v$ from its two child values using an out-of-place operation
+An internal vertex $v$ computes a function $f_v$ from its two child values using an out-of-place unitary $U_v$ satisfying
 \[
-|a\rangle|b\rangle|z\rangle \longmapsto |a\rangle|b\rangle|z\oplus f_v(a,b)\rangle.
+U_v\ket{a}\ket{b}\ket{0}=\ket{a}\ket{b}\ket{f_v(a,b)}.
 \]
-Leaf values are prepared from external inputs that remain available throughout the computation. The functions may differ between vertices. We fix their dependency tree and make no associativity or invertibility assumption.
+Applying $U_v^\dagger$ uncomputes this value when both child values are available. Leaf values are prepared from external inputs that remain available throughout the computation. The functions $f_v$ may differ between vertices and need not be associative or invertible. We fix their dependency tree.
 
 \subsection{Configurations and actions}
 
