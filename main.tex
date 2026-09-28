@@ -98,12 +98,12 @@ Seoul National University, Seoul 08826, Republic of Korea}
 \vspace{-1.4em}
 \begin{abstract}
 
-Pebble games model computations under a space budget. Spooky pebbling models computations that release quantum memory by measurement and later correct the resulting phases. Binary-tree dependencies arise when two-input operations combine independently computed values. We determine the optimal work and parallel depth on complete binary trees. Work counts function computations and uncomputations. For the tree $B_h$ with $n=2^h-1$ vertices and every space budget $h+1\le s\le n$, sequential and parallel work have optimal order $\Theta(nh/\log(s+1))$. The sequential bound resolves the time-optimality question left open by Kornerup, Sadun, and Soloveichik. In the two-phase parallel model, the optimal depth is
+Pebble games model computations under a fixed space budget. Spooky pebbling allows quantum memory to be released by measurement, with the resulting phases corrected later. We study two-input computations with binary-tree dependencies and determine their optimal work and parallel depth. For the complete tree $B_h$ with with $n=2^h-1$ vertices and every space budget $h+1\le s\le n$, we give an algorithm with asymptotically optimal work $\Theta(nh/\log(s+1))$. We also construct a parallel schedule with optimal depth
 \[
  \Theta\!\left(h+\frac ns
  \max\!\left\{\frac{h}{\log(s+1)},\,1+\log^*h\right\}\right).
 \]
-The iterated logarithm arises from the cost of retaining quantum values over time. Our lower bounds hold for every full binary tree. Among full binary trees with $2^{h-1}$ leaves, the complete tree attains minimum work up to constants at every common feasible budget $s$. For work, we retain the largest balanced boundary allowed by the space budget and uncompute the block above it while those values remain available. At space $\Theta(n/h)$, the least work of a depth-optimal strategy is $\Theta(n(1+\log^*h))$, whereas the unrestricted work optimum is $\Theta(n)$. In the public implementation of Chevignard, Fouque, and Schrottenloher, replacing the schedule of a fixed RNS point-addition tree reduces per-prime Toffoli/AND-equivalent work by $20.86\%$ for a P-224 instance and $22.66\%$ for a P-256 instance, with unchanged peak workspace.
+The work bound resolves the time-optimality question left open by Kornerup, Sadun, and Soloveichik. Our lower bounds hold for every full binary tree. The main idea is to retain the largest balanced boundary allowed by the budget and uncompute the vertices above it before releasing its values. At space $\Theta(n/h)$, the least work of a depth-optimal strategy is $\Theta(n(1+\log^*h))$, whereas the unrestricted work optimum is $\Theta(n)$. Applying our schedule to the RNS point-addition trees in the public implementation of Chevignard, Fouque, and Schrottenloher reduces their evaluation cost by $20.86\%$ for a P-224 instance and $22.66\%$ for a P-256 instance, using the same arithmetic circuits and peak workspace.
 \end{abstract}
 
 \section{Introduction}
@@ -112,15 +112,14 @@ Consider a quantum out-of-place operation $f$ with $n$ inputs:
 \begin{equation}
     \ket{a_1}\cdots\ket{a_n}\ket{0} \longmapsto \ket{a_1}\cdots\ket{a_n}\ket{f(a_1,\ldots,a_n)}.
 \end{equation}
-This operation must act coherently on superpositions of inputs. When several such operations are applied, the output of one operation may be needed as an input to another. These intermediate values must be stored in quantum registers until they are used.
 
-For example, consider computing the sum of $n$ values using two-input out-of-place addition. To add four values, we can first compute $a_1+a_2$ and $a_3+a_4$, then add these two results. The two partial sums must be stored until the final addition. Repeating this procedure for more inputs gives a binary tree of additions. A similar structure appears when adding elliptic-curve points~\cite{CFS2026}, as we discuss in \cref{sec:cfs-case-study}.
+This operation must act coherently on superpositions of inputs. When the output of one operation serves as an input to another, the intermediate value must be stored in a quantum register until it is used. Repeatedly combining pairs of values forms a binary tree of computations when each value is used as an input at most once. Such a structure appears when adding elliptic-curve points~\cite{CFS2026}, as we discuss in \cref{sec:cfs-case-study}.
 
-Once an intermediate value is no longer needed, we would like to clear its register for reuse while preserving the coherence of the computation. We can do this by reversing the operation that produced the value, but this requires its inputs to remain available. If their registers have already been cleared, those inputs must be computed again. Keeping intermediate values therefore uses more memory, while clearing them early may require more computation.
+Once an intermediate value is no longer needed, we would like to clear its register to save space. We can do this by reversing the operation that produced the value, but this requires its inputs to remain available. If their registers have already been cleared, those inputs must be computed again. Keeping intermediate values therefore uses more memory, while clearing them early may require more computation.
 
 Pebble games describe this tradeoff between memory and computation~\cite{Bennett1989}. Each vertex represents a value, and its predecessors represent the inputs needed to compute it. A pebble indicates that the value is stored in a register. Placing a pebble corresponds to computing the value, and removing it with its inputs available corresponds to uncomputing it.
 
-Measurement offers another way to release a quantum register. Instead of uncomputing its value, we can measure the register in the Hadamard basis and free it immediately. This reduces the quantum memory in use, but may leave a phase that must be corrected later. Suppose the measured register holds $x$, and let $\ket{\psi_x}$ denote the state of the remaining registers. A measurement outcome $m$ leaves
+Measurement offers another way to release a quantum register. Instead of uncomputing its value, we can measure the register in the Hadamard basis and free it immediately. This reduces the quantum memory in use, but leaves a phase that must be corrected later. Suppose the measured register holds $x$, and let $\ket{\psi_x}$ denote the state of the remaining registers. A measurement outcome $m$ leaves
 \begin{equation}
     \sum_x \alpha_x\ket{\psi_x}\ket{x} \longmapsto \sum_x \alpha_x(-1)^{m\cdot x}\ket{\psi_x},
 \end{equation}
@@ -132,18 +131,18 @@ In the pebble game, we represent this pending phase correction by a ghost. Unlik
 \end{equation}
 We can then uncompute $x$ to clear its register without leaving a phase.
 
-This extension of the pebble game, introduced by Gidney, is called spooky pebbling~\cite{Gidney2019}. It allows us to release quantum memory before the inputs needed for uncomputation are available, at the cost of correcting the resulting phases later. A successful strategy must produce the desired output and clear all other pebbles and ghosts. Figure~\ref{fig:binary-pebbling-concept} illustrates a configuration of the spooky pebble game on a binary tree. This configuration uses 10 quantum registers.
+This extension of the pebble game, introduced by Gidney, is called spooky pebbling~\cite{Gidney2019}. It allows us to release quantum memory before the inputs needed for uncomputation are available, at the cost of correcting the resulting phases later. A successful strategy must produce the desired output and clear all other pebbles and ghosts. Figure~\ref{fig:binary-pebbling-concept} illustrates a configuration of the spooky pebble game on a binary tree.
 
 \begin{figure}[htbp]
     \centering
     \includegraphics[width=\textwidth]{figs/binary_pebbling_concept.png}
-    \caption{Spooky pebbling on a binary tree. Pebbles represent values stored in quantum registers, and ghosts represent pending phase corrections. Vertices with neither a pebble nor a ghost are empty. Pebbling or unpebbling an internal vertex requires pebbles on both children. The goal is to leave only the root pebbled, with all other vertices empty.}
+    \caption{Illustration of spooky pebbling on a binary tree. Pebbles represent values stored in quantum registers, and ghosts represent pending phase corrections. Vertices with neither a pebble nor a ghost are empty. The configuration shown here occupies 10 quantum registers. Pebbling or unpebbling an internal vertex requires pebbles on both children. The goal is to leave only the root pebbled, with all other vertices empty.}
     \label{fig:binary-pebbling-concept}
 \end{figure}
 
 \subsection{Prior work}
 
-Kornerup, Sadun, and Soloveichik (KSS) studied sequential spooky pebbling, where one pebble is placed or removed at a time~\cite{KSS2025}. They determined the optimal tradeoff between computation time and memory use for a chain of connected nodes. For a complete binary tree with $h$ vertex levels and $n=2^h-1$ vertices, they constructed a strategy using the minimum $h+1$ pebbles and $O(n\log n)$ steps~\cite[Theorem~5.5]{KSS2025}. Their step count includes placements, uncomputations, and ghosting. The strategy first computes the root, leaving ghosts below it, and then recomputes child values to clear these ghosts. KSS left open whether the $O(n\log n)$ bound can be improved and asked for a general time--space tradeoff on binary trees~\cite[Section~6]{KSS2025}.
+Kornerup, Sadun, and Soloveichik studied sequential spooky pebbling, where one pebble is placed or removed at a time~\cite{KSS2025}. They determined the optimal tradeoff between computation time and memory use for a chain of connected nodes. For a complete binary tree with $h$ vertex levels and $n=2^h-1$ vertices, they constructed a strategy using the minimum $h+1$ pebbles and $O(n\log n)$ steps~\cite[Theorem~5.5]{KSS2025}. Their step count includes placements, uncomputations, and ghosting. The strategy first computes the root, leaving ghosts below it, and then recomputes child values to clear these ghosts. KSS left open whether the $O(n\log n)$ bound can be improved and asked for a general time--space tradeoff on binary trees~\cite[Section~6]{KSS2025}.
 
 On more general dependency graphs, KSS studied the hardness of minimizing pebble space. Quist and Laarman proved PSPACE-completeness results and developed SAT-based methods to find spooky pebbling strategies with small quantum space, classical space, or execution time~\cite{QL2025}. Our focus is on explicit strategies and matching bounds for binary trees.
 
