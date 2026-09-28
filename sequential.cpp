@@ -151,9 +151,9 @@ void kss_algorithm() {
     }
 }
 
-// Make the depth-k frontier roots, retain them, compute the top block, and
+// Make the depth-k boundary roots, retain them, compute the top block, and
 // remove the top block while its inputs still exist. Only the global root
-// may be retained. On return, ghosts can remain only in frontier subtrees.
+// may be retained. On return, ghosts can remain only in boundary subtrees.
 void block(int x, int k, bool keep_root) {
     assert(k >= 1);
     for (int v = x << k; v < (x+1) << k; v++) fast(v);
@@ -211,7 +211,7 @@ void level_control() {
     }
 }
 
-// Finite optimization ONLY within the above flat-frontier block family.
+// Finite optimization ONLY within the above flat-boundary block family.
 // Inputs to cleanup have ghosts at every internal vertex and empty leaves.
 // This invariant is established by fast/block; this is not a general DAG DP.
 struct Plan {
@@ -233,7 +233,7 @@ int block_peak(int r, int k) {
 
 uint64_t block_work(int r, int k, bool keep_root) {
     int m = 1 << k, q = r-k;
-    // Frontier preparation + top P/U + supported removals of frontier leaves.
+    // Boundary preparation + top P/U + supported removals of boundary leaves.
     return m*fast_work(q) + 2*uint64_t(m-1) - (keep_root ? 1 : 0)
            + (q == 1 ? m : 0);
 }
@@ -293,7 +293,7 @@ void uniform_control() {
     for (int v = 1 << k; v < 2 << k; v++) cleanup_uniform(v, h-k);
 }
 
-// A frontier need not have 2^k roots. For m roots its two depths are k and
+// A boundary need not have 2^k roots. For m roots its two depths are k and
 // k+1, with a=2^(k+1)-m taller jobs and b=2*(m-2^k) shorter jobs.
 // Produce taller jobs first; this minimizes the peak while retaining roots.
 struct Shape {
@@ -313,7 +313,7 @@ int mixed_peak(int r, int m) {
 }
 
 // Peak is nondecreasing in m. No work optimization/DP is needed here.
-int choose_frontier_size(int r, int B) {
+int choose_boundary_size(int r, int B) {
     if (r == 1) return 1;
     int lo = 2, hi = min(1 << (r-1), (B+1)/2), answer = 0;
     while (lo <= hi) {
@@ -323,11 +323,11 @@ int choose_frontier_size(int r, int B) {
             lo = mid+1;
         } else hi = mid-1;
     }
-    require(answer >= 2, "no feasible mixed frontier");
+    require(answer >= 2, "no feasible mixed boundary");
     return answer;
 }
 
-// In these plans 'cut' records the frontier size m, not a depth k.
+// In these plans 'cut' records the boundary size m, not a depth k.
 vector<Plan> mixed_clean_plan;
 Plan mixed_root_plan;
 
@@ -349,27 +349,27 @@ void make_mixed_plan() {
     mixed_clean_plan.assign(h+1, {});
     mixed_clean_plan[1] = {0, 0, 1};
     for (int r = 2; r < h; r++)
-        mixed_clean_plan[r] = mixed_cost(r, choose_frontier_size(r, space_limit-1),
+        mixed_clean_plan[r] = mixed_cost(r, choose_boundary_size(r, space_limit-1),
                                         false, mixed_clean_plan);
     mixed_root_plan = h == 1 ? Plan{1, 1, 1} :
-        mixed_cost(h, choose_frontier_size(h, space_limit), true, mixed_clean_plan);
+        mixed_cost(h, choose_boundary_size(h, space_limit), true, mixed_clean_plan);
 }
 
-struct FrontierJob { int x, height; };
+struct BoundaryJob { int x, height; };
 
-void collect_frontier(int x, int r, int m, vector<FrontierJob>& frontier,
+void collect_boundary(int x, int r, int m, vector<BoundaryJob>& boundary,
                       vector<int>& top) {
     if (m == 1) {
-        frontier.push_back({x, r});
+        boundary.push_back({x, r});
         return;
     }
-    collect_frontier(2*x, r-1, (m+1)/2, frontier, top);
-    collect_frontier(2*x+1, r-1, m/2, frontier, top);
+    collect_boundary(2*x, r-1, (m+1)/2, boundary, top);
+    collect_boundary(2*x+1, r-1, m/2, boundary, top);
     top.push_back(x);  // Children before parent.
 }
 
 // The same routine computes the output root and cleans ghost-only subtrees.
-// Its schedule is: widest feasible frontier, top block, smaller cleanup jobs.
+// Its schedule is: widest feasible boundary, top block, smaller cleanup jobs.
 void our_algorithm(int x, int r, bool keep_root) {
     assert(!placed[x]);
     if (r == 1) {
@@ -379,20 +379,20 @@ void our_algorithm(int x, int r, bool keep_root) {
     }
     assert(keep_root || is_ghost[x]);
     int B = keep_root ? space_limit : space_limit-1;
-    int m = choose_frontier_size(r, B);
-    vector<FrontierJob> frontier;
+    int m = choose_boundary_size(r, B);
+    vector<BoundaryJob> boundary;
     vector<int> top;
-    collect_frontier(x, r, m, frontier, top);
-    // Frontier jobs have at most two heights; keep left-to-right order within each.
+    collect_boundary(x, r, m, boundary, top);
+    // Boundary jobs have at most two heights; keep left-to-right order within each.
     int tall_height = shape(r, m).q;
-    stable_partition(frontier.begin(), frontier.end(),
-                     [tall_height](const FrontierJob& j) { return j.height == tall_height; });
-    for (FrontierJob j : frontier) fast(j.x);
+    stable_partition(boundary.begin(), boundary.end(),
+                     [tall_height](const BoundaryJob& j) { return j.height == tall_height; });
+    for (BoundaryJob j : boundary) fast(j.x);
     for (int v : top) pebble(v);
     for (auto it = top.rbegin(); it != top.rend(); ++it)
         if (!keep_root || *it != x) unpebble(*it);
-    for (FrontierJob j : frontier) release(j.x);
-    for (FrontierJob j : frontier) our_algorithm(j.x, j.height, false);
+    for (BoundaryJob j : boundary) release(j.x);
+    for (BoundaryJob j : boundary) our_algorithm(j.x, j.height, false);
 }
 
 enum Algorithm { KSS, CONTROL_LEVEL, CONTROL_UNIFORM, BLOCK };
@@ -421,7 +421,7 @@ Metrics run(Algorithm algorithm, int height, int cap) {
         our_algorithm(1, h, true);
         require(metrics.work() == mixed_root_plan.work &&
                 metrics.peak == mixed_root_plan.peak,
-                "mixed frontier prediction/replay disagree");
+                "mixed boundary prediction/replay disagree");
     }
     verifier.finish();
     require(placed[1] && !is_ghost[1], "wrong root state");
@@ -462,11 +462,11 @@ void compare(int height, int cap, bool show_controls = false) {
     print_row("Block cleanup", ours, kss.work());
     cout << "Verified: every primitive, space limit, counters, final cleanup.\n";
     if (height > 1)
-        cout << "Block cleanup: initial frontier size=" << mixed_root_plan.cut
+        cout << "Block cleanup: initial boundary size=" << mixed_root_plan.cut
              << "; KSS is the fixed h+1-space schedule, not a budget-tuned baseline.\n";
 }
 
-// Exhaustive optimization of the restricted mixed-frontier family, solely
+// Exhaustive optimization of the restricted mixed-boundary family, solely
 // to check the greedy rule. This is not an exact search over all pebblings.
 uint64_t check_greedy_choices(int height, int cap) {
     vector<Plan> optimal(height+1);
@@ -478,8 +478,8 @@ uint64_t check_greedy_choices(int height, int cap) {
             if (mixed_peak(r, m) <= B)
                 consider(optimal[r], mixed_cost(r, m, keep, optimal));
         }
-        Plan greedy = mixed_cost(r, choose_frontier_size(r, B), keep, optimal);
-        require(greedy.work == optimal[r].work, "greedy frontier is not family-optimal");
+        Plan greedy = mixed_cost(r, choose_boundary_size(r, B), keep, optimal);
+        require(greedy.work == optimal[r].work, "greedy boundary is not family-optimal");
         if (!keep)
             require(optimal[r].work >= 2*optimal[r-1].work+2,
                     "cleanup projection inequality failed");

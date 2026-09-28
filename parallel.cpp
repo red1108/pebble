@@ -272,11 +272,11 @@ int largest_equal_cut(int height, int budget) {
         int m = 1 << k, q = height-k;
         if (m+q <= budget && 2*m-1 <= budget) best = k;
     }
-    require(best >= 1, "no feasible equal-depth frontier");
+    require(best >= 1, "no feasible equal-depth boundary");
     return best;
 }
 
-// Prepare an equal-depth frontier, clear its top block levelwise, then release
+// Prepare an equal-depth boundary, clear its top block levelwise, then release
 // its roots. The caller subsequently handles the resulting ghost subtrees.
 Schedule block_contract(int root, int height, int cut_depth,
                         int budget, int vertex_count) {
@@ -291,7 +291,7 @@ Schedule block_contract(int root, int height, int cut_depth,
         batch_size = (budget-m+1)/(q+1);
         local_budget = q+1;
     }
-    require(batch_size >= 1, "frontier batch has no capacity");
+    require(batch_size >= 1, "boundary batch has no capacity");
 
     Schedule out;
     for (int first = 0; first < m; first += batch_size) {
