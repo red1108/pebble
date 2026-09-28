@@ -120,7 +120,7 @@ void ghost(int x) {
     metrics.live--;
 }
 
-void remove_kss(int x) {
+void release(int x) {
     assert(placed[x]);
     if (child_ready(x)) unpebble(x);
     else ghost(x);
@@ -134,8 +134,8 @@ void fast(int x) {
     }
     pebble(x);
     if (!leaf(x)) {
-        remove_kss(2*x);
-        remove_kss(2*x+1);
+        release(2*x);
+        release(2*x+1);
     }
 }
 
@@ -149,8 +149,8 @@ void cleanup_kss(int x) {
     fast(2*x);
     fast(2*x+1);
     unpebble(x);
-    remove_kss(2*x);
-    remove_kss(2*x+1);
+    release(2*x);
+    release(2*x+1);
     cleanup_kss(2*x);
     cleanup_kss(2*x+1);
 }
@@ -176,7 +176,7 @@ void block(int x, int k, bool keep_root) {
     for (int d = keep_root ? 1 : 0; d < k; d++)
         for (int v = x << d; v < (x+1) << d; v++) unpebble(v);
 
-    for (int v = x << k; v < (x+1) << k; v++) remove_kss(v);
+    for (int v = x << k; v < (x+1) << k; v++) release(v);
 }
 
 int nodes(int r) { return (1 << r) - 1; }
@@ -405,7 +405,7 @@ void our_algorithm(int x, int r, bool keep_root) {
     for (int v : top) pebble(v);
     for (auto it = top.rbegin(); it != top.rend(); ++it)
         if (!keep_root || *it != x) unpebble(*it);
-    for (FrontierJob j : frontier) remove_kss(j.x);
+    for (FrontierJob j : frontier) release(j.x);
     for (FrontierJob j : frontier) our_algorithm(j.x, j.height, false);
 }
 
