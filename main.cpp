@@ -383,7 +383,7 @@ void collect_block(int x, int r, int m, vector<Job>& boundary, vector<int>& top)
 
 // The same routine computes the output root and cleans ghost-only subtrees.
 // Its schedule is: widest feasible boundary, top block, smaller cleanup jobs.
-void block_cleanup(int x, int r, bool keep_root) {
+void our_algorithm(int x, int r, bool keep_root) {
     assert(!placed[x]);
     if (r == 1) {
         if (keep_root) pebble(x);
@@ -405,7 +405,7 @@ void block_cleanup(int x, int r, bool keep_root) {
     for (auto it = top.rbegin(); it != top.rend(); ++it)
         if (!keep_root || *it != x) unpebble(*it);
     for (Job j : boundary) remove_kss(j.x);
-    for (Job j : boundary) block_cleanup(j.x, j.height, false);
+    for (Job j : boundary) our_algorithm(j.x, j.height, false);
 }
 
 enum Algorithm { KSS, CONTROL_LEVEL, CONTROL_UNIFORM, BLOCK };
@@ -431,7 +431,7 @@ Metrics run(Algorithm algorithm, int height, int cap) {
                 "planned/replayed work or peak disagree");
     } else {
         make_mixed_plan();  // Classical bookkeeping is not quantum work.
-        block_cleanup(1, h, true);
+        our_algorithm(1, h, true);
         require(metrics.work() == mixed_root_plan.work &&
                 metrics.peak == mixed_root_plan.peak,
                 "mixed boundary prediction/replay disagree");
