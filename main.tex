@@ -155,7 +155,7 @@ These results leave the corresponding questions for binary trees open. Computing
 
 \subsection{Main results}
 
-We study the task of computing the root of a binary tree and clearing every other pebble and ghost. Let $B_h$ be the complete binary tree of height $h\ge2$, where height counts vertices on a longest root-to-leaf path. Then $B_h$ has $n=2^h-1$ vertices; from here on, $n$ counts tree vertices. Space counts the registers holding vertex values, including leaf values. Work counts function computations and uncomputations, while ghosting is excluded, following KMRV. Any later computations and uncomputations needed to clear ghosts are included. We use this work convention for both sequential and parallel strategies; \cref{sec:models} gives the precise rules.
+We study the task of computing the root of a binary tree and clearing every other pebble and ghost. Let $B_h$ be the complete binary tree of height $h\ge2$, where height counts vertices on a longest root-to-leaf path. Then $B_h$ has $n=2^h-1$ vertices. Space counts every vertex whose value is stored in a quantum register, including leaves and the retained root. Work counts function computations and uncomputations, including those needed later to clear ghosts. Ghosting measures and releases a register without evaluating the vertex function, so it is excluded from work. We use this work convention for both sequential and parallel strategies; \cref{sec:models} gives the precise rules.
 
 Write $\Wseq^\star(B_h,s)$ and $\Wpar^\star(B_h,s)$ for the minimum sequential and parallel work with space at most $s$, and $\Dpar^\star(B_h,s)$ for the minimum parallel depth. Also write $\lambda(x)=1+\log^*x$, where $\log^*x$ is the number of iterated binary logarithms needed to reach a value at most one.
 
