@@ -114,7 +114,7 @@ Consider a quantum out-of-place operation $f$ with $n$ inputs:
 \end{equation}
 This operation must act coherently on superpositions of inputs. When several such operations are applied, the output of one operation may be needed as an input to another. These intermediate values must be stored in quantum registers until they are used.
 
-For example, consider computing the sum of $n$ values using two-input out-of-place addition. To add four values, we can first compute $a_1+a_2$ and $a_3+a_4$, then add these two results. The two partial sums must be stored until the final addition. Repeating this procedure for more inputs gives a binary tree of additions. A similar structure appears when adding elliptic-curve points, as in the application considered in this work~\cite{CFS2026}.
+For example, consider computing the sum of $n$ values using two-input out-of-place addition. To add four values, we can first compute $a_1+a_2$ and $a_3+a_4$, then add these two results. The two partial sums must be stored until the final addition. Repeating this procedure for more inputs gives a binary tree of additions. A similar structure appears when adding elliptic-curve points~\cite{CFS2026}, as we discuss in \cref{sec:cfs-case-study}.
 
 Once an intermediate value is no longer needed, we would like to clear its register for reuse while preserving the coherence of the computation. We can do this by reversing the operation that produced the value, but this requires its inputs to remain available. If their registers have already been cleared, those inputs must be computed again. Keeping intermediate values therefore uses more memory, while clearing them early may require more computation.
 
