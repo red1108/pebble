@@ -1,3 +1,4 @@
+#include "pebbling_common.hpp"
 #include <algorithm>
 #include <cassert>
 #include <cstdint>
@@ -11,24 +12,18 @@
 #include <utility>
 #include <vector>
 using namespace std;
+using pebbling::MAX_H;
+using pebbling::Metrics;
+using pebbling::nodes;
+using pebbling::require;
 
 // Every vertex, including a leaf and the retained output, costs one pebble.
 // Only pebble and unpebble count toward work. No parallel rounds here.
-struct Metrics {
-    uint64_t place = 0, unpebble = 0;
-    uint64_t ghost = 0, exorcise = 0;
-    int live = 0, peak = 0;
-    uint64_t work() const { return place + unpebble; }
-} metrics;
+Metrics metrics;
 
-constexpr int MAX_H = 20;
 int h, n, space_limit;
 bool placed[1 << MAX_H];
 bool is_ghost[1 << MAX_H];
-
-void require(bool ok, const string& message) {
-    if (!ok) throw runtime_error(message);
-}
 
 // An independent ledger consumes each primitive P/U/G event, not the planner's
 // cost formula or the simulator's bool arrays. Checks remain active with NDEBUG.
@@ -81,8 +76,7 @@ struct Verifier {
 } verifier;
 
 bool leaf(int x) {
-    assert(1 <= x && x <= n);
-    return x > n/2;
+    return pebbling::leaf(x, n);
 }
 
 bool child_ready(int x) {
@@ -128,15 +122,9 @@ void release(int x) {
 
 // The user's KSS implementation, unchanged in its scheduling decisions.
 void fast(int x) {
-    if (!leaf(x)) {
-        fast(2*x);
-        fast(2*x+1);
-    }
-    pebble(x);
-    if (!leaf(x)) {
-        release(2*x);
-        release(2*x+1);
-    }
+    auto place = [](int v) { pebble(v); };
+    auto remove = [](int v) { release(v); };
+    pebbling::fast_traversal(x, n, place, remove);
 }
 
 void cleanup_kss(int x) {
@@ -178,8 +166,6 @@ void block(int x, int k, bool keep_root) {
 
     for (int v = x << k; v < (x+1) << k; v++) release(v);
 }
-
-int nodes(int r) { return (1 << r) - 1; }
 
 void fill_subtree(int x) {
     if (!leaf(x)) {
@@ -573,7 +559,7 @@ int main(int argc, char** argv) {
             bool controls = argc > 1 && string(argv[1]) == "--controls";
             int first = controls ? 2 : 1;
             require(argc <= first+2,
-                    "usage: ./main [--controls] [height [space]] or ./main --test");
+                    "usage: ./sequential [--controls] [height [space]] or ./sequential --test");
             int height = argc > first ? parse_int(argv[first]) : 10;
             require(1 <= height && height <= MAX_H, "height must be in [1, 20]");
             int cap = argc > first+1 ? parse_int(argv[first+1]) : (height == 1 ? 1 : height+1);
