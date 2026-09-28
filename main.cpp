@@ -371,14 +371,19 @@ void make_mixed_plan() {
 
 struct FrontierJob { int x, height; };
 
-void collect_frontier(int x, int r, int m, vector<FrontierJob>& frontier,
+void collect_frontier(int x, int r, int m, int tall_height,
+                      vector<FrontierJob>& tall, vector<FrontierJob>& short_jobs,
                       vector<int>& top) {
     if (m == 1) {
-        frontier.push_back({x, r});
+        if (r == tall_height) tall.push_back({x, r});
+        else {
+            assert(r == tall_height-1);
+            short_jobs.push_back({x, r});
+        }
         return;
     }
-    collect_frontier(2*x, r-1, (m+1)/2, frontier, top);
-    collect_frontier(2*x+1, r-1, m/2, frontier, top);
+    collect_frontier(2*x, r-1, (m+1)/2, tall_height, tall, short_jobs, top);
+    collect_frontier(2*x+1, r-1, m/2, tall_height, tall, short_jobs, top);
     top.push_back(x);  // Children before parent.
 }
 
@@ -394,13 +399,16 @@ void our_algorithm(int x, int r, bool keep_root) {
     assert(keep_root || is_ghost[x]);
     int B = keep_root ? space_limit : space_limit-1;
     int m = choose_frontier_size(r, B);
+    Shape frontier_shape = shape(r, m);
+    vector<FrontierJob> tall, short_jobs;
+    tall.reserve(frontier_shape.a);
+    short_jobs.reserve(frontier_shape.b);
     vector<FrontierJob> frontier;
+    frontier.reserve(m);
     vector<int> top;
-    collect_frontier(x, r, m, frontier, top);
-    sort(frontier.begin(), frontier.end(), [](FrontierJob a, FrontierJob b) {
-        if (a.height != b.height) return a.height > b.height;
-        return a.x < b.x;
-    });
+    collect_frontier(x, r, m, frontier_shape.q, tall, short_jobs, top);
+    frontier.insert(frontier.end(), tall.begin(), tall.end());
+    frontier.insert(frontier.end(), short_jobs.begin(), short_jobs.end());
     for (FrontierJob j : frontier) fast(j.x);
     for (int v : top) pebble(v);
     for (auto it = top.rbegin(); it != top.rend(); ++it)
