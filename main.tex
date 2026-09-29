@@ -348,6 +348,8 @@ Keeping the values at $F$ available during uncomputation avoids repeatedly recon
 \end{algorithmic}
 \end{algorithm}
 
+With $m$ fixed, \cref{alg:block-contract} packages boundary construction and the steps through releasing $F$ into $\Contract(T,m,\rho)$, where $\rho$ indicates whether to retain the root. It returns $F$ for the recursive cleanup; \cref{lem:contract} analyzes only this one-block call.
+
 \begin{algorithm}[H]
 \caption{One-block cleanup $\Contract(T,m,\rho)$}
 \label{alg:block-contract}
@@ -365,7 +367,7 @@ Keeping the values at $F$ available during uncomputation avoids repeatedly recon
 \end{algorithmic}
 \end{algorithm}
 
-\begin{lemma}[Cost of a block cleanup]
+\begin{lemma}[Cost of one-block cleanup]
 \label{lem:contract}
 For $r\ge2$ and $2\le m\le2^{r-1}$, $\Contract(T,m,0)$ has peak space and work
 \begin{align}
