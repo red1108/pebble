@@ -331,7 +331,7 @@ Every vertex is pebbled once, and every leaf other than the root is unpebbled on
 
 Our key idea is to clean up the tree in \emph{blocks}. Starting at a subtree's root, extend a block downward as far as the space budget permits. The vertices at its bottom form the boundary $F$. Compute and retain the values at $F$, then pebble the vertices above it upward to the root and unpebble them downward toward $F$. Finally, release $F$ and clean the subtrees rooted there recursively. The output-producing call retains the root.
 
-For a complete subtree of height $r$, form a balanced boundary of $m$ vertices, where $2\le m\le2^{r-1}$, by starting with the root's children and repeatedly replacing a shallowest boundary vertex by its children. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Compute their values with $\Fast$, tallest subtrees first. Release a boundary leaf by $\Unp$ and an internal boundary vertex by $\Ghost$; pebbling a ghosted vertex later corrects its phase.
+For a complete subtree of height $r$, form a balanced boundary of $m$ vertices, where $2\le m\le2^{r-1}$, by starting with the root's children and repeatedly replacing a shallowest boundary vertex by its children. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Release a boundary leaf by $\Unp$ and an internal boundary vertex by $\Ghost$; pebbling a ghosted vertex later corrects its phase.
 
 \begin{lemma}[Block contraction]
 \label{lem:contract}
@@ -343,7 +343,7 @@ Starting with no pebbles on a height-$r$ subtree, where $r\ge2$ and $2\le m\le2^
 It leaves no pebbles and confines all ghosts to the boundary subtrees. Retaining the original root reduces the work by one without changing the peak.
 \end{lemma}
 \begin{proof}
-Boundary subtrees have heights $q=r-\lceil\log m\rceil$ or $q+1$. The shorter group, when present, contains at least two roots. Thus the peak during boundary preparation occurs while computing the last root with the other $m-1$ roots retained. It is $m+q$ for $q\ge2$, and $m$ for $q=1$. The full top block occupies $2m-1$ pebbles, which also absorbs the leaf exception. This proves \cref{eq:boundary-space}.
+Compute the boundary subtrees with $\Fast$, tallest first. Their heights are $q=r-\lceil\log m\rceil$ or $q+1$. The shorter group, when present, contains at least two roots. Thus the peak during boundary preparation occurs while computing the last root with the other $m-1$ roots retained. It is $m+q$ for $q\ge2$, and $m$ for $q=1$. The full top block occupies $2m-1$ pebbles, which also absorbs the leaf exception. This proves \cref{eq:boundary-space}.
 
 Every vertex is pebbled once. The $2^{r-1}$ leaves and the $m-1$ vertices above the boundary are each unpebbled once; all other removals are ghostings. Hence the work is
 \[
