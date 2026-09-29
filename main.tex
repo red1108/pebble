@@ -300,7 +300,7 @@ Root computation alone needs no superlinear work. The bottom-up routine $\Fast$ 
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
 
-For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its child roots recursively, pebbles $v$, and releases the child roots afterward. An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
+For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its children recursively, pebbles $v$, and releases the children afterward. An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
 
 \begin{algorithm}[H]
 \caption{Bottom-up root computation $\Fast(T)$}
