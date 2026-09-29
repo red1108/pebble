@@ -348,7 +348,7 @@ Keeping the values at $F$ available during uncomputation avoids repeatedly recon
 \end{algorithmic}
 \end{algorithm}
 
-To clean one block, $\Contract(T,m,\rho)$ first obtains $F$ from $\mathsf{Boundary}(T,m)$, then clears the block above $F$ and releases $F$. It returns $F$ for the recursive cleanup, and $\rho=1$ retains the root. \Cref{lem:contract} analyzes this single call.
+The space budget determines the largest feasible boundary size $m$, and $\mathsf{Boundary}(T,m)$ gives the corresponding boundary $F$. The vertices above $F$ form the block. $\Contract(T,m,\rho)$ exorcises this block in one pass, retaining the root when $\rho=1$, and returns $F$ for recursive cleanup. \Cref{lem:contract} analyzes the cost of this one-block operation.
 
 \begin{algorithm}[H]
 \caption{One-block cleanup $\Contract(T,m,\rho)$}
