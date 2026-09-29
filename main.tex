@@ -285,17 +285,49 @@ Any parallel strategy can be serialized into a sequential one by executing each 
 
 
 
-\section{Block cleanup constructions}
-\label{sec:constructions}
+\section{Our algorithms}
+\label{sec:main-algorithms}
+
+The computation has two parts: build the root value from the leaves, then clear every other vertex while retaining the root. With space $s=n$, we can hold all vertex values at once. Pebbling the tree bottom-up and unpebbling every non-root vertex top-down uses $n+(n-1)=2n-1$ work. Under a smaller space budget, values must be released before the cleanup that needs them, and recovering those values can add work.
+
+Root computation alone needs no superlinear work. The bottom-up routine $\Fast$ computes the root with $O(n)$ work using the minimum feasible $h+1$ pebbles, but leaves ghosts below it. KSS gave an $O(n\log n)$-step strategy to clear these ghosts at the same minimum budget~\cite[Theorem~5.5]{KSS2025}. The additional work comes from reconstructing child values during cleanup. Our strategy retains selected subtree roots while computing a block above them, then uncomputes that block before releasing those values. We develop this block cleanup in \cref{sec:block-cleanup} and analyze its sequential work and parallel depth in the following subsections.
+
+\subsection{Bottom-up root calculation}
+\label{sec:fast-root}
+
+For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its child roots recursively, pebbles $v$, and releases the child roots after their values have been used. A leaf child is unpebbled; an internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
+
+\begin{algorithm}[H]
+\caption{Bottom-up root computation $\Fast(T)$}
+\label{alg:fast-root}
+\begin{algorithmic}[1]
+\Require Complete subtree $T$ rooted at $v$, with no pebbles; ghosts may be present
+\Ensure Only $v$ is pebbled; all other internal vertices are ghosts and all other leaves are empty
+\If{$T$ consists of one vertex}
+ \State $\Peb(v)$; \Return
+\EndIf
+\State Run $\Fast(T_L)$ and $\Fast(T_R)$ on the child subtrees
+\State $\Peb(v)$
+\For{each child root $u$ of $v$}
+ \If{$u$ is a leaf}
+  \State $\Unp(u)$
+ \Else
+  \State $\Ghost(u)$
+ \EndIf
+\EndFor
+\end{algorithmic}
+\end{algorithm}
+
+Every vertex is pebbled once, and every leaf other than the root is unpebbled once. Thus $\Fast(T)$ uses $\Theta(2^r)$ work. From an empty tree, this is optimal up to constants for root computation because every vertex must be computed at least once. It peaks at $r+1$ pebbles for $r\ge2$, or one pebble for a leaf. Its root is ready for use, but the internal ghosts still require cleanup.
 
 \subsection{Block cleanup}
 \label{sec:block-cleanup}
 
-A boundary $F$ below a subtree's root meets every root-to-leaf path exactly once. Block cleanup computes and retains the values in $F$, uses them to clear the vertices above $F$, then releases $F$ and recurses on its subtrees. The output-producing call retains the root. Boundary subtrees are computed in decreasing order of their individual peak space; each completed subtree leaves one equally sized value.
+A boundary $F$ consists of roots of disjoint subtrees immediately below the block to be cleared; every root-to-leaf path passes through one vertex of $F$. We compute and retain these roots using $\Fast$, then pebble the vertices above $F$ bottom-up. With the boundary values still available, we unpebble the top block from its root downward, retaining the root only in the output-producing call. We release $F$ after the top block is clear and recursively clean its subtrees. Holding $F$ throughout the top cleanup avoids reconstructing the boundary values separately for each ancestor above them.
 
-On $B_r$, $\Fast(r)$ recursively computes the two child roots, pebbles their parent, and releases the children by $\Unp$ for leaves and $\Ghost$ otherwise~\cite[Theorem~5.5]{KSS2025}. It places every vertex once, leaves only the root pebbled, and peaks at $r+1$ pebbles for $r\ge2$, or one for a leaf.
+Sequential block cleanup achieves the optimal work order $\Theta(nh/\log(s+1))$ at space budget $s$, as established by \cref{thm:seq-upper,thm:universal-work}; at $s=h+1$, it improves KSS's $O(n\log n)$ step bound.
 
-For $2\le m\le2^{r-1}$, form a balanced boundary of $m$ vertices by assigning $\lceil m/2\rceil$ boundary vertices to the left child and $\lfloor m/2\rfloor$ to the right, recursively stopping at one. Its vertices lie at depths $\lfloor\log m\rfloor$ and $\lceil\log m\rceil$. Compute these roots by $\Fast$, tallest subtrees first. Pebble the vertices above them bottom-up, unpebble them top-down, and release the boundary. Placing a pebble on a ghosted vertex corrects its pending phase; the top-down uncomputation then leaves the block above the boundary empty.
+For $2\le m\le2^{r-1}$, form a balanced boundary of $m$ vertices by assigning $\lceil m/2\rceil$ boundary vertices to the left child and $\lfloor m/2\rfloor$ to the right, recursively stopping at one. Its vertices lie at depths $\lfloor\log m\rfloor$ and $\lceil\log m\rceil$. Compute the taller boundary subtrees first to limit the peak space while retaining completed roots. Pebbling a ghosted vertex corrects its pending phase; unpebbling the top vertices while their children remain clears the block above $F$.
 
 \begin{lemma}[Block contraction]
 \label{lem:contract}
