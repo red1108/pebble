@@ -329,7 +329,7 @@ Every vertex is pebbled once, and every leaf other than the root is unpebbled on
 \subsection{Block cleanup}
 \label{sec:block-cleanup}
 
-Start at the root of a subtree and expand the block downward as far as the space budget permits. Its lower boundary $F$ meets every root-to-leaf path once. Compute and retain the values in $F$, pebble the block above it bottom-up, and unpebble that block top-down. Then release $F$ and clean the subtrees rooted there recursively. The output-producing call retains the root.
+Our key idea is to clean up the tree in \emph{blocks}. Starting at a subtree's root, extend a block downward as far as the space budget permits. The vertices at its bottom form the boundary $F$. Compute and retain the values at $F$, then pebble the vertices above it upward to the root and unpebble them downward toward $F$. Finally, release $F$ and clean the subtrees rooted there recursively. The output-producing call retains the root.
 
 For a complete subtree of height $r$, form a balanced boundary of $m$ vertices, where $2\le m\le2^{r-1}$, by starting with the root's children and repeatedly replacing a shallowest boundary vertex by its children. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Compute their values with $\Fast$, tallest subtrees first. Release a boundary leaf by $\Unp$ and an internal boundary vertex by $\Ghost$; pebbling a ghosted vertex later corrects its phase.
 
