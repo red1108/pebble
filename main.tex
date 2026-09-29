@@ -329,15 +329,9 @@ Every vertex is pebbled once, and every leaf other than the root is unpebbled on
 \subsection{Block cleanup}
 \label{sec:block-cleanup}
 
-\mingyu{todo: start here!}
+Start at the root of a subtree and expand the block downward as far as the space budget permits. Its lower boundary $F$ meets every root-to-leaf path once. Compute and retain the values in $F$, pebble the block above it bottom-up, and unpebble that block top-down. Then release $F$ and clean the subtrees rooted there recursively. The output-producing call retains the root.
 
-Our key idea is to clean up the tree in \emph{blocks}. Instead of clearing vertices one by one, we set a boundary $F$ that cuts across the tree directly beneath the region we want to clean in one shot, pushing this boundary as deep as our space budget allows. By holding all values along $F$ in memory, we can uncompute the entire block of vertices above $F$ in a single pass without repeatedly reconstructing intermediate nodes. By reducing repeated recomputation, sequential block cleanup achieves the optimal work $\Theta(nh/\log(s+1))$ under a space budget $s$. This smoothly spans both extremes: at the minimum budget $s = h+1$, it improves known $O(n\log n)$ bound~\cite{KSS2025} to $\Theta(n\log n/\log\log n)$, while at $s = n$, it naturally recovers the optimal linear work $\Theta(n)$.
-
-A boundary $F$ below a subtree's root meets every root-to-leaf path exactly once. Block cleanup computes and retains the values in $F$, uses them to clear the vertices above $F$, then releases $F$ and recurses on its subtrees. The output-producing call retains the root. Boundary subtrees are computed in decreasing order of their individual peak space; each completed subtree leaves one equally sized value.
-
-On $B_r$, $\Fast(r)$ recursively computes the two child roots, pebbles their parent, and releases the children by $\Unp$ for leaves and $\Ghost$ otherwise~\cite[Theorem~5.5]{KSS2025}. It places every vertex once, leaves only the root pebbled, and peaks at $r+1$ pebbles for $r\ge2$, or one for a leaf.
-
-For $2\le m\le2^{r-1}$, form a balanced boundary of $m$ vertices by assigning $\lceil m/2\rceil$ boundary vertices to the left child and $\lfloor m/2\rfloor$ to the right, recursively stopping at one. Its vertices lie at depths $\lfloor\log m\rfloor$ and $\lceil\log m\rceil$. Compute these roots by $\Fast$, tallest subtrees first. Pebble the vertices above them bottom-up, unpebble them top-down, and release the boundary. Placing a pebble on a ghosted vertex corrects its pending phase; the top-down uncomputation then leaves the block above the boundary empty.
+For a complete subtree of height $r$, form a balanced boundary of $m$ vertices, where $2\le m\le2^{r-1}$, by starting with the root's children and repeatedly replacing a shallowest boundary vertex by its children. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Compute their values with $\Fast$, tallest subtrees first. Release a boundary leaf by $\Unp$ and an internal boundary vertex by $\Ghost$; pebbling a ghosted vertex later corrects its phase.
 
 \begin{lemma}[Block contraction]
 \label{lem:contract}
