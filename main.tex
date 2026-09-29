@@ -242,6 +242,8 @@ When $v\in G$, $\Peb(v)$ also applies the single-qubit phase corrections specifi
 
 The initial configuration is $(\varnothing,\varnothing)$, and the goal is $(\{r\},\varnothing)$: retain the root value and clear every other pebble and every ghost.
 
+In the algorithms below, the subroutine $\Release(u)$, called on a pebbled vertex $u$, applies $\Unp(u)$ if $u$ is a leaf or both its children are pebbled, and $\Ghost(u)$ otherwise.
+
 \subsection{Sequential and parallel execution}
 
 A sequential strategy executes one action at a time. Each $\Peb$, $\Unp$, or $\Ghost$ action is one step.
@@ -300,9 +302,9 @@ Root computation alone needs no superlinear work. The bottom-up routine $\Fast$ 
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
 
-For a pebbled vertex $u$, $\Release(u)$ abbreviates $\Unp(u)$ if $u$ is a leaf or both its children are pebbled, and $\Ghost(u)$ otherwise. It introduces no new action.
+For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its child roots recursively, pebbles $v$, and releases the child roots afterward.
 
-For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its child roots recursively, pebbles $v$, and releases the child roots afterward. An internal child is ghosted because its own children have already been released; a leaf child is unpebbled. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
+An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
 
 \begin{algorithm}[H]
 \caption{Bottom-up root computation $\Fast(T)$}
