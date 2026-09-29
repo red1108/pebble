@@ -12,7 +12,7 @@ work as pebble plus unpebble, excluding ghosting. `parallel.cpp` builds the
 manuscript's round-based Sweep, equal-depth block, and batched forest schedule.
 It checks first-phase active-set conflicts, second-phase ghosting, the round's
 transient space, and final cleanup. Both use `pebbling_common.hpp` for tree
-geometry, metrics, and Fast traversal. This is a schedule simulator, not CPU
+geometry, metrics, and `fast_pebble` traversal. This is a schedule simulator, not CPU
 multithreading.
 
 From this repository, build and test without leaving binaries in Git:

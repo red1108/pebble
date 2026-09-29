@@ -28,12 +28,12 @@ struct Metrics {
 };
 
 // Both schedulers use this dependency order. Their release actions differ:
-// sequential Fast chooses unpebble/ghost, while parallel Sweep ghosts children.
+// sequential fast_pebble chooses unpebble/ghost, while parallel Sweep ghosts children.
 template<class Place, class Release>
-void fast_traversal(int vertex, int vertex_count, Place& place, Release& release) {
+void fast_pebble_traversal(int vertex, int vertex_count, Place& place, Release& release) {
     if (!leaf(vertex, vertex_count)) {
-        fast_traversal(2 * vertex, vertex_count, place, release);
-        fast_traversal(2 * vertex + 1, vertex_count, place, release);
+        fast_pebble_traversal(2 * vertex, vertex_count, place, release);
+        fast_pebble_traversal(2 * vertex + 1, vertex_count, place, release);
     }
     place(vertex);
     if (!leaf(vertex, vertex_count)) {

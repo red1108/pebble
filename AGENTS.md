@@ -7,7 +7,7 @@ create or edit another active `main.tex` elsewhere in the workspace. Keep
 Build with `python3 build.py`. It writes `../paper/main.pdf` and temporary
 files under `../paper/.build/`, outside this Git repository.
 `sequential.cpp` and `parallel.cpp` are the active C++ schedulers. Shared tree,
-metric, and Fast-traversal code lives in `pebbling_common.hpp`. Put compiled
+metric, and `fast_pebble` traversal code lives in `pebbling_common.hpp`. Put compiled
 binaries in `../paper/.build/`, never in this repository.
 
 Commit each user-requested manuscript revision in this repository after

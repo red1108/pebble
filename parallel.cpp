@@ -160,7 +160,7 @@ void carry_root(Schedule& out, vector<int>& stack, int incoming) {
 }
 
 // Sweep leaves only its root pebbled; every other vertex is a ghost.
-Schedule ghost_fast(int root, int vertex_count) {
+Schedule ghost_fast_pebble(int root, int vertex_count) {
     Schedule out;
     auto place = [&out](int v) {
         Round round;
@@ -168,7 +168,7 @@ Schedule ghost_fast(int root, int vertex_count) {
         out.push_back(std::move(round));
     };
     auto release = [&out](int v) { out.back().ghost.push_back(v); };
-    pebbling::fast_traversal(root, vertex_count, place, release);
+    pebbling::fast_pebble_traversal(root, vertex_count, place, release);
     return out;
 }
 
@@ -230,7 +230,7 @@ Schedule near_height_sweep(int root, int height, int budget, int vertex_count) {
         if (local_budget >= 2*ell)
             append_schedule(out, sweep(subtree, ell, local_budget, vertex_count));
         else
-            append_schedule(out, ghost_fast(subtree, vertex_count));
+            append_schedule(out, ghost_fast_pebble(subtree, vertex_count));
         carry_root(out, stack, subtree);
     }
     require(stack.size() == 1 && stack[0] == root,
@@ -247,7 +247,7 @@ Schedule sweep(int root, int height, int budget, int vertex_count) {
     }
     require(budget >= height+1, "Sweep lacks minimum space");
     if (budget >= nodes(height)) return full_sweep(root, height);
-    if (budget < 16) return ghost_fast(root, vertex_count);
+    if (budget < 16) return ghost_fast_pebble(root, vertex_count);
     if (budget >= 2*height) return wavefront_sweep(root, height, budget);
     return near_height_sweep(root, height, budget, vertex_count);
 }

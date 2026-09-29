@@ -121,10 +121,10 @@ void release(int x) {
 }
 
 // The user's KSS implementation, unchanged in its scheduling decisions.
-void fast(int x) {
+void fast_pebble(int x) {
     auto place = [](int v) { pebble(v); };
     auto remove = [](int v) { release(v); };
-    pebbling::fast_traversal(x, n, place, remove);
+    pebbling::fast_pebble_traversal(x, n, place, remove);
 }
 
 void cleanup_kss(int x) {
@@ -134,8 +134,8 @@ void cleanup_kss(int x) {
         return;
     }
     assert(is_ghost[x]);
-    fast(2*x);
-    fast(2*x+1);
+    fast_pebble(2*x);
+    fast_pebble(2*x+1);
     unpebble(x);
     release(2*x);
     release(2*x+1);
@@ -144,7 +144,7 @@ void cleanup_kss(int x) {
 }
 
 void kss_algorithm() {
-    fast(1);
+    fast_pebble(1);
     if (n > 1) {
         cleanup_kss(2);
         cleanup_kss(3);
@@ -156,7 +156,7 @@ void kss_algorithm() {
 // may be retained. On return, ghosts can remain only in boundary subtrees.
 void block(int x, int k, bool keep_root) {
     assert(k >= 1);
-    for (int v = x << k; v < (x+1) << k; v++) fast(v);
+    for (int v = x << k; v < (x+1) << k; v++) fast_pebble(v);
 
     for (int d = k-1; d >= 0; d--)
         for (int v = x << d; v < (x+1) << d; v++) pebble(v);
@@ -186,7 +186,7 @@ void drain_subtree(int x) {
 // Equal-depth sequential construction from the archived manuscript:
 // initial fast sweep, largest feasible cut, then full-tree terminal cleanup.
 void level_control() {
-    fast(1);
+    fast_pebble(1);
     if (h == 1) return;
     int r = h-1, B = space_limit-1;  // The global root stays live.
     vector<int> jobs = {2, 3};
@@ -387,7 +387,7 @@ void our_algorithm(int x, int r, bool keep_root) {
     int tall_height = shape(r, m).q;
     stable_partition(boundary.begin(), boundary.end(),
                      [tall_height](const BoundaryJob& j) { return j.height == tall_height; });
-    for (BoundaryJob j : boundary) fast(j.x);
+    for (BoundaryJob j : boundary) fast_pebble(j.x);
     for (int v : top) pebble(v);
     for (auto it = top.rbegin(); it != top.rend(); ++it)
         if (!keep_root || *it != x) unpebble(*it);
