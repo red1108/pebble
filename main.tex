@@ -300,7 +300,7 @@ Root computation alone needs no superlinear work. The bottom-up routine $\Fast$ 
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
 
-For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its children recursively, pebbles $v$, and releases the children afterward. An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
+For a complete subtree $T$ rooted at $v$ with $H(T)=r$, $\Fast(T)$ computes its children recursively, pebbles $v$, and releases the children afterward. An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}. For a pebbled vertex $u$, let $\Release(u)$ mean $\Unp(u)$ if $u$ is a leaf, and $\Ghost(u)$ otherwise.
 
 \begin{algorithm}[H]
 \caption{Bottom-up root computation $\Fast(T)$}
@@ -314,42 +314,60 @@ For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its chi
 \State Run $\Fast(T_L)$ and $\Fast(T_R)$ on the child subtrees
 \State $\Peb(v)$
 \For{each child root $u$ of $v$}
- \If{$u$ is a leaf}
-  \State $\Unp(u)$
- \Else
-  \State $\Ghost(u)$
- \EndIf
+\State $\Release(u)$
 \EndFor
 \end{algorithmic}
 \end{algorithm}
 
 Every vertex is pebbled once, and every leaf other than the root is unpebbled once. Thus $\Fast(T)$ uses $\Theta(2^r)$ work. From an empty tree, this is optimal up to constants for root computation because every vertex must be computed at least once. Space usage peaks at $r+1$ pebbles for $r\ge2$, or one pebble for a leaf. Its root is ready for use, but the internal ghosts still require cleanup.
 
-
 \subsection{Block cleanup}
 \label{sec:block-cleanup}
 
-Our key idea is to clean up the tree in \emph{blocks}. Starting at a subtree's root, extend a block downward as far as the space budget permits. The vertices at its bottom form the boundary $F$. Compute and retain the values at $F$, then pebble the vertices above it upward to the root and unpebble them downward toward $F$. Finally, release $F$ and clean the subtrees rooted there recursively. The output-producing call retains the root.
+Our key idea is to clean up the tree in \emph{blocks}. Starting at a subtree's root, extend a block downward as far as the space budget permits. The vertices at its bottom form the boundary $F$. Compute and retain the values at $F$, then pebble the vertices above it upward to the root and unpebble them downward toward $F$. Finally, release $F$ and clean the subtrees rooted there recursively.
 
-For a complete subtree of height $r$, form a balanced boundary of $m$ vertices, where $2\le m\le2^{r-1}$, by starting with the root's children and repeatedly replacing a shallowest boundary vertex by its children. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Compute their values with $\Fast$, tallest subtrees first. Release a boundary leaf by $\Unp$ and an internal boundary vertex by $\Ghost$; pebbling a ghosted vertex later corrects its phase.
+For a complete subtree of height $r$, construct a balanced boundary $F$ of $m$ vertices, where $2\le m\le2^{r-1}$, using \cref{alg:boundary}. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Compute the values at $F$ with $\Fast$, processing the tallest boundary subtrees first. Pebble the vertices above $F$ from bottom to top, then unpebble them from top to bottom, retaining the root in the output-producing call. Apply $\Release(u)$ to each $u\in F$, and recursively clean the subtree rooted at each such $u$.
 
-\begin{lemma}[Block contraction]
+Keeping the values at $F$ available during uncomputation avoids repeatedly reconstructing intermediate vertices. Thus sequential block cleanup achieves optimal work $\Theta(nh/\log(s+1))$ under space budget $s$. At the minimum budget $s=h+1$, this is $\Theta(n\log n/\log\log n)$, improving the $O(n\log n)$ bound of KSS~\cite{KSS2025}. At $s=n$, it gives natural optimal work $\Theta(n)$.
+
+\mingyu{todo: start here!}
+
+\begin{algorithm}[H]
+\caption{Constructing a balanced boundary $\mathsf{Boundary}(T,m)$}
+\label{alg:boundary}
+\begin{algorithmic}[1]
+\Require Complete subtree $T$ rooted at $v$ with $H(T)=r$;
+         desired boundary size $1\le m\le2^{r-1}$
+\Ensure A balanced boundary $F$ with $|F|=m$
+\If{$m=1$}
+ \State \Return $\{v\}$
+\EndIf
+\State $F_L\gets\mathsf{Boundary}(T_L,\lceil m/2\rceil)$
+\State $F_R\gets\mathsf{Boundary}(T_R,\lfloor m/2\rfloor)$
+\State \Return $F_L\cup F_R$
+\end{algorithmic}
+\end{algorithm}
+
+\begin{lemma}[Cost of a block cleanup]
 \label{lem:contract}
 Starting with no pebbles on a height-$r$ subtree, where $r\ge2$ and $2\le m\le2^{r-1}$, this contraction has peak space and work
 \begin{align}
  S(r,m)&=\max\{2m-1,\ r+m-\lceil\log m\rceil\}, \label{eq:boundary-space}\\
  K(r,m)&=3\cdot2^{r-1}+m-2. \label{eq:block-work}
 \end{align}
-It leaves no pebbles and confines all ghosts to the boundary subtrees. Retaining the original root reduces the work by one without changing the peak.
+It leaves no pebbles and confines all ghosts to the boundary subtrees. Retaining the original root reduces the work by one without changing the peak space.
 \end{lemma}
-\begin{proof}
-Boundary subtrees have heights $q=r-\lceil\log m\rceil$ or $q+1$. The shorter group, when present, contains at least two roots. Thus the peak during boundary preparation occurs while computing the last root with the other $m-1$ roots retained. It is $m+q$ for $q\ge2$, and $m$ for $q=1$. The full top block occupies $2m-1$ pebbles, which also absorbs the leaf exception. This proves \cref{eq:boundary-space}.
 
-Every vertex is pebbled once. The $2^{r-1}$ leaves and the $m-1$ vertices above the boundary are each unpebbled once; all other removals are ghostings. Hence the work is
+\begin{proof}
+The boundary $F$ has $m$ vertices, and the block above it has $m-1$ vertices. At the end of the upward pebbling pass, all $2m-1$ vertices are pebbled.
+
+The other possible space peak occurs while preparing $F$. Put $q=r-\lceil\log m\rceil$. Its boundary subtrees have height $q$ or $q+1$, and we compute the taller ones first. A balanced boundary has at least two height-$q$ subtrees. Thus a taller computation starts with at most $m-3$ roots retained and uses at most $m+q-1$ pebbles. The final height-$q$ computation starts with $m-1$ roots retained and uses $m+q$ pebbles if $q\ge2$, or $m$ if $q=1$. Together with the top-block peak, this gives \cref{eq:boundary-space}.
+
+For work, each of the $2^r-1$ vertices is pebbled once. The $2^{r-1}$ leaves are unpebbled once, as are the $m-1$ vertices above $F$; all other removals are ghostings. Since work counts only pebbling and unpebbling,
 \[
- (2^r-1)+2^{r-1}+(m-1)=K(r,m).
+ K(r,m)=(2^r-1)+2^{r-1}+(m-1).
 \]
-Every top removal has its children present. Retaining the output omits one unpebbling.
+The top vertices are unpebbled while their children are present. Keeping the output root skips one unpebbling.
 \end{proof}
 
 For an equal-depth boundary, the space conditions become
@@ -378,7 +396,7 @@ Choose the largest $m$ with $S(r,m)\le B$. Both terms in \cref{eq:boundary-space
 \State Compute and retain $F$ using $\Fast$, tallest subtrees first
 \State Pebble the vertices above $F$ bottom-up
 \State Unpebble them top-down, except the root when $\rho=1$
-\State Release $F$: unpebble its leaves and ghost its other vertices
+\State Apply $\Release(u)$ to each $u\in F$
 \State For each $v\in F$, run $\Clean(T_v,B-\rho,0)$
 \end{algorithmic}
 \end{algorithm}
