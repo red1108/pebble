@@ -348,14 +348,31 @@ Keeping the values at $F$ available during uncomputation avoids repeatedly recon
 \end{algorithmic}
 \end{algorithm}
 
+\begin{algorithm}[H]
+\caption{One-block cleanup $\Contract(T,m,\rho)$}
+\label{alg:block-contract}
+\begin{algorithmic}[1]
+\Require Complete height-$r$ subtree $T$ with no pebbles and no leaf ghosts;
+         $r\ge2$, $2\le m\le2^{r-1}$, $\rho\in\{0,1\}$
+\Ensure Boundary $F$ returned; the root is pebbled iff $\rho=1$;
+        all remaining ghosts lie in the subtrees rooted at $F$
+\State $F\gets\mathsf{Boundary}(T,m)$
+\State Compute and retain $F$ using $\Fast$, tallest subtrees first
+\State Pebble the vertices above $F$ bottom-up
+\State Unpebble them top-down, except the root when $\rho=1$
+\State Apply $\Release(u)$ to each $u\in F$
+\State \Return $F$
+\end{algorithmic}
+\end{algorithm}
+
 \begin{lemma}[Cost of a block cleanup]
 \label{lem:contract}
-Starting with no pebbles on a height-$r$ subtree, where $r\ge2$ and $2\le m\le2^{r-1}$, this contraction has peak space and work
+For $r\ge2$ and $2\le m\le2^{r-1}$, $\Contract(T,m,0)$ has peak space and work
 \begin{align}
  S(r,m)&=\max\{2m-1,\ r+m-\lceil\log m\rceil\}, \label{eq:boundary-space}\\
  K(r,m)&=3\cdot2^{r-1}+m-2. \label{eq:block-work}
 \end{align}
-It leaves no pebbles and confines all ghosts to the boundary subtrees. Retaining the original root reduces the work by one without changing the peak space.
+It leaves no pebbles and confines all ghosts to the boundary subtrees. $\Contract(T,m,1)$ retains the root, reducing the work by one without changing the peak space.
 \end{lemma}
 
 \begin{proof}
@@ -392,11 +409,7 @@ Choose the largest $m$ with $S(r,m)\le B$. Both terms in \cref{eq:boundary-space
  \State Place the root if $\rho=1$; \Return
 \EndIf
 \State Choose the largest $2\le m\le2^{r-1}$ with $S(r,m)\le B$
-\State Construct the $m$-vertex boundary $F$
-\State Compute and retain $F$ using $\Fast$, tallest subtrees first
-\State Pebble the vertices above $F$ bottom-up
-\State Unpebble them top-down, except the root when $\rho=1$
-\State Apply $\Release(u)$ to each $u\in F$
+\State $F\gets\Contract(T,m,\rho)$
 \State For each $v\in F$, run $\Clean(T_v,B-\rho,0)$
 \end{algorithmic}
 \end{algorithm}
