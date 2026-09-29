@@ -114,6 +114,7 @@ void ghost(int x) {
     metrics.live--;
 }
 
+// Unpebble when its inputs are still live (including a leaf); otherwise ghost.
 void release(int x) {
     assert(placed[x]);
     if (child_ready(x)) unpebble(x);

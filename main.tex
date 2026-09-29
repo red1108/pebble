@@ -54,6 +54,7 @@
 \newcommand{\ket}[1]{\lvert#1\rangle}
 \newcommand{\Unp}{\mathsf{Unpebble}}
 \newcommand{\Ghost}{\mathsf{Ghost}}
+\newcommand{\Release}{\mathsf{Release}}
 \newcommand{\FastPebble}{\mathsf{FastPebble}}
 \newcommand{\Sweep}{\mathsf{Sweep}}
 \newcommand{\Clean}{\mathsf{Clean}}
@@ -295,7 +296,9 @@ Root computation alone needs no superlinear work. The bottom-up routine $\FastPe
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
 
-For a complete height-$r$ subtree $T$ rooted at $v$, we write $\FastPebble(T)$ for the \texttt{fast\_pebble} subroutine of KSS~\cite[Theorem~5.5]{KSS2025}. It computes the child roots recursively, pebbles $v$, and releases the child roots after their values have been used. A leaf child is unpebbled; an internal child is ghosted because its own children have already been released.
+For a pebbled vertex $u$, let $\Release(u)$ mean $\Unp(u)$ if $u$ is a leaf or both its children are pebbled, and $\Ghost(u)$ otherwise. This shorthand introduces no new action.
+
+For a complete height-$r$ subtree $T$ rooted at $v$, we write $\FastPebble(T)$ for the \texttt{fast\_pebble} subroutine of KSS~\cite[Theorem~5.5]{KSS2025}. It computes the child roots recursively, pebbles $v$, and applies $\Release$ to the child roots. An internal child is ghosted because its own children have already been released; a leaf child is unpebbled.
 
 \begin{algorithm}[H]
 \caption{Bottom-up root computation $\FastPebble(T)$}
@@ -309,11 +312,7 @@ For a complete height-$r$ subtree $T$ rooted at $v$, we write $\FastPebble(T)$ f
 \State Run $\FastPebble(T_L)$ and $\FastPebble(T_R)$ on the child subtrees
 \State $\Peb(v)$
 \For{each child root $u$ of $v$}
- \If{$u$ is a leaf}
-  \State $\Unp(u)$
- \Else
-  \State $\Ghost(u)$
- \EndIf
+ \State $\Release(u)$
 \EndFor
 \end{algorithmic}
 \end{algorithm}
@@ -374,7 +373,7 @@ Choose the largest $m$ with $S(r,m)\le B$. Both terms in \cref{eq:boundary-space
 \State Compute and retain $F$ using $\FastPebble$, tallest subtrees first
 \State Pebble the vertices above $F$ bottom-up
 \State Unpebble them top-down, except the root when $\rho=1$
-\State Release $F$: unpebble its leaves and ghost its other vertices
+\State Apply $\Release(v)$ to each $v\in F$
 \State For each $v\in F$, run $\Clean(T_v,B-\rho,0)$
 \end{algorithmic}
 \end{algorithm}
