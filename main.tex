@@ -398,7 +398,7 @@ For an equal-depth boundary, the space conditions become
 \subsection{Sequential work}
 \label{sec:sequential}
 
-Choose the largest $m$ with $S(r,m)\le B$. Both terms in \cref{eq:boundary-space} are nondecreasing in $m$, so this is an integer search. The rule also minimizes work among the balanced recursive contractions defined above; \cref{prop:greedy-boundary} proves this in \cref{app:sequential}.
+At a height-$r$ cleanup call with budget $B$, choose the largest $m$ satisfying $S(r,m)\le B$. Since $S(r,m)$ is nondecreasing in $m$, binary search finds this value. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees; see \cref{prop:greedy-boundary}.
 
 \begin{algorithm}[H]
 \caption{Complete-tree block cleanup $\Clean(T,B,\rho)$}
