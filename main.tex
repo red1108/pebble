@@ -348,7 +348,7 @@ Keeping the values at $F$ available during uncomputation avoids repeatedly recon
 \end{algorithmic}
 \end{algorithm}
 
-With $m$ fixed, \cref{alg:block-contract} packages boundary construction and the steps through releasing $F$ into $\Contract(T,m,\rho)$, where $\rho$ indicates whether to retain the root. It returns $F$ for the recursive cleanup; \cref{lem:contract} analyzes only this one-block call.
+To clean one block, $\Contract(T,m,\rho)$ first obtains $F$ from $\mathsf{Boundary}(T,m)$, then clears the block above $F$ and releases $F$. It returns $F$ for the recursive cleanup, and $\rho=1$ retains the root. \Cref{lem:contract} analyzes this single call.
 
 \begin{algorithm}[H]
 \caption{One-block cleanup $\Contract(T,m,\rho)$}
