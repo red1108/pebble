@@ -300,9 +300,7 @@ Root computation alone needs no superlinear work. The bottom-up routine $\Fast$ 
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
 
-For a pebbled vertex $u$, $\Release(u)$ abbreviates $\Unp(u)$ if $u$ is a leaf or both its children are pebbled, and $\Ghost(u)$ otherwise. It introduces no new action.
-
-For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its child roots recursively, pebbles $v$, and releases the child roots afterward. An internal child is ghosted because its own children have already been released; a leaf child is unpebbled. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
+For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its child roots recursively, pebbles $v$, and releases the child roots afterward. An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}.
 
 \begin{algorithm}[H]
 \caption{Bottom-up root computation $\Fast(T)$}
@@ -316,12 +314,16 @@ For a complete height-$r$ subtree $T$ rooted at $v$, $\Fast(T)$ computes its chi
 \State Run $\Fast(T_L)$ and $\Fast(T_R)$ on the child subtrees
 \State $\Peb(v)$
 \For{each child root $u$ of $v$}
- \State $\Release(u)$
+ \If{$u$ is a leaf}
+  \State $\Unp(u)$
+ \Else
+  \State $\Ghost(u)$
+ \EndIf
 \EndFor
 \end{algorithmic}
 \end{algorithm}
 
-Every vertex is pebbled once, and every leaf other than the root is unpebbled once. Thus $\Fast(T)$ uses $\Theta(2^r)$ work. From an empty tree, this is optimal up to constants for root computation because every vertex must be computed at least once. It peaks at $r+1$ pebbles for $r\ge2$, or one pebble for a leaf. Its root is ready for use, but the internal ghosts still require cleanup.
+Every vertex is pebbled once, and every leaf other than the root is unpebbled once. Thus $\Fast(T)$ uses $\Theta(2^r)$ work. From an empty tree, this is optimal up to constants for root computation because every vertex must be computed at least once. Space usage peaks at $r+1$ pebbles for $r\ge2$, or one pebble for a leaf. Its root is ready for use, but the internal ghosts still require cleanup.
 
 
 \subsection{Block cleanup}
@@ -329,8 +331,7 @@ Every vertex is pebbled once, and every leaf other than the root is unpebbled on
 
 \mingyu{todo: start here!}
 
-Our key idea is to clean up the tree in \emph{blocks}. Instead of clearing vertices one by one, we set a boundary $F$ that cuts across the tree directly beneath the region we want to clean in one shot, pushing this boundary as deep as our space budget allows. By holding all values along $F$ in memory, we can uncompute the entire block of vertices above $F$ in a single pass without repeatedly reconstructing intermediate nodes. By reducing repeated recomputation, sequential block cleanup achieves the optimal work $\Theta(nh/\log(s+1))$ under space budget $s$, improving KSS’s $O(n\log n)$ bound at the minimum budget $s=h+1$.
-
+Our key idea is to clean up the tree in \emph{blocks}. Instead of clearing vertices one by one, we set a boundary $F$ that cuts across the tree directly beneath the region we want to clean in one shot, pushing this boundary as deep as our space budget allows. By holding all values along $F$ in memory, we can uncompute the entire block of vertices above $F$ in a single pass without repeatedly reconstructing intermediate nodes. By reducing repeated recomputation, sequential block cleanup achieves the optimal work $\Theta(nh/\log(s+1))$ under a space budget $s$. This smoothly spans both extremes: at the minimum budget $s = h+1$, it improves known $O(n\log n)$ bound~\cite{KSS2025} to $\Theta(n\log n/\log\log n)$, while at $s = n$, it naturally recovers the optimal linear work $\Theta(n)$.
 
 A boundary $F$ below a subtree's root meets every root-to-leaf path exactly once. Block cleanup computes and retains the values in $F$, uses them to clear the vertices above $F$, then releases $F$ and recurses on its subtrees. The output-producing call retains the root. Boundary subtrees are computed in decreasing order of their individual peak space; each completed subtree leaves one equally sized value.
 
