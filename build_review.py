@@ -1,14 +1,18 @@
-"""Build the concision review, coloring changed sentences blue.
+"""Build the concision review with blue changes or a full word-level redline.
 
 Run from any directory with `python3 build_review.py`. Generated sources and
 compiler output stay outside the repository. The original and clean revision
 are also built to compare pagination and verify that color adds no text.
+Use `python3 build_review.py --redline` for blue additions and red struck-out
+deletions in a separate revised-redline.pdf, generated with latexdiff.
 """
 from pathlib import Path
+import argparse
 import concurrent.futures
 import difflib
 import hashlib
 import json
+import re
 import shutil
 import subprocess
 
@@ -89,11 +93,51 @@ def build(name, source):
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--redline', action='store_true')
+    options = parser.parse_args()
     before = (REVIEW/'before.tex').read_text()
     after = (REPO/'revised.tex').read_text()
     metadata = json.loads((REVIEW/'checks.json').read_text())
     assert hashlib.sha256(before.encode()).hexdigest() == metadata['baseline_sha256']
     assert hashlib.sha256(after.encode()).hexdigest() == metadata['revised_sha256']
+    if options.redline:
+        diff = subprocess.run([
+            'latexdiff', '--type=UNDERLINE', '--subtype=SAFE',
+            '--floattype=FLOATSAFE', '--graphics-markup=none',
+            '--config=MINWORDSBLOCK=0',
+            str(REVIEW/'before.tex'), str(REPO/'revised.tex'),
+        ], cwd=REPO, text=True, capture_output=True, check=True)
+        # UNDERLINE already strikes deletions in red. Additions need blue
+        # text only, with no underline, as requested by the author.
+        original = r'\protect\color{blue}\uwave{#1}'
+        replacement = r'\protect\color{blue}#1'
+        assert diff.stdout.count(original) == 1
+        marked = diff.stdout.replace(original, replacement, 1)
+        # Adjacent deleted/added math names can otherwise form one long box.
+        # Permit a line break at the change boundary, without adding text.
+        boundary = r'\providecommand{\DIFdelend}{}'
+        assert marked.count(boundary) == 1
+        marked = marked.replace(boundary,
+                                r'\providecommand{\DIFdelend}{\ifhmode\allowbreak\fi}', 1)
+        # latexdiff can drop a space before a deleted continuation (e.g.
+        # "blocks" + "to be cleared"). Restore only source-attested spaces;
+        # attached suffixes such as the deleted "s" in "heights" stay joined.
+        def restore_space(match):
+            left, marker, kind, right = match.groups()
+            source = before if kind == 'del' else after
+            start = r'\b' if left[0].isalpha() else ''
+            if re.search(start + re.escape(left) + r'\s+' + re.escape(right) + r'\b', source):
+                return left + marker + ' ' + right
+            return match[0]
+        marked = re.sub(
+            r'([A-Za-z]+|\$[^$\n]+\$)(\\DIF(del|add)begin\s*\\DIF\3\{)([A-Za-z]+)',
+            restore_space, marked)
+        output = build('redline', marked)
+        (BUILD/'redline/latexdiff-output.txt').write_text(diff.stderr)
+        shutil.copy2(output, REVIEW/'revised-redline.pdf')
+        print(REVIEW/'revised-redline.pdf')
+        return
     marked, changed = annotate(before, after)
     assert changed
     with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
