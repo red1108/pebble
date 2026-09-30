@@ -130,7 +130,7 @@ Measurement offers another way to release a quantum register. Instead of uncompu
 \end{equation}
 where $m\cdot x$ is computed modulo two and the measured register has been discarded. The factor $(-1)^{m\cdot x}$ may change the relative phases of the remaining state and therefore affect interference in subsequent quantum operations.
 
-In the pebble game, we represent this pending phase correction by a ghost. Unlike a pebble, a ghost does not occupy a quantum register; the measurement outcome is stored classically. Correcting the phase is called exorcising the ghost. Once the required inputs are available, we can do this by recomputing $x$ and applying $Z$ to each qubit whose corresponding measurement outcome is one. We obtain
+In the pebble game, we represent this pending phase correction by a ghost. Unlike a pebble, a ghost does not occupy a quantum register. The measurement outcome is stored classically. Correcting the phase is called exorcising the ghost. Once the required inputs are available, we can do this by recomputing $x$ and applying $Z$ to each qubit whose corresponding measurement outcome is one. We obtain
 \begin{equation}
     \sum_x \alpha_x(-1)^{m\cdot x}\ket{\psi_x}\ket{x} \xrightarrow{\bigotimes_j Z^{m_j}} \sum_x \alpha_x\ket{\psi_x}\ket{x}.
 \end{equation}
@@ -161,7 +161,7 @@ These results leave the tradeoffs on binary trees open. Independent subtrees can
 
 Let $B_h$ be the complete binary tree of height $h\ge2$, where height counts vertices on a longest root-to-leaf path. Then $B_h$ has $n=2^h-1$ vertices. Write $\Wseq^\star(B_h,s)$ and $\Wpar^\star(B_h,s)$ for the minimum sequential and parallel work with space at most $s$, and $\Dpar^\star(B_h,s)$ for the minimum parallel depth. Also write $\lambda(x)=1+\log^*x$, where $\log^*x$ is the number of iterated binary logarithms needed to reach a value at most one.
 
-\begin{theorem}[Informal, optimal space--work tradeoffs and parallel depth;
+\begin{theorem}[Informal, optimal space--work tradeoffs and parallel depth,
 see \cref{thm:seq-upper,thm:parallel-upper,thm:universal-work,thm:weighted}]
 \label{thm:main}
 For every integer $h+1\le s\le n$,
@@ -204,7 +204,7 @@ We also apply our cleanup strategy to a fixed point-addition tree in the public 
 \mingyu{todo: fix this at last}
 Our sequential strategy retains a boundary of subtree values while computing and uncomputing the vertices above it. This \emph{block cleanup} leaves smaller subtrees to be cleared recursively. As the remaining subtree height decreases, the same cleanup budget permits deeper blocks. Each leaf therefore participates in $O(h/\log(s+1))$ blocks, even at the minimum space budget. Since a block costs constant work per leaf in its subtree, summing these charges gives the sequential upper bound.
 
-For the work lower bound, we use the final removal of each non-output value. It must be an uncomputation, since a final measurement would leave a ghost that cannot be cleared later. Its children must still be present, so final removals proceed from ancestors to descendants. When the top vertex of a region is finally removed, the space budget forces many smaller pieces to contain no pebble; their values must be reconstructed to complete the cleanup below. Repeating this argument at smaller scales gives the work bound. The order of final removals separates the charged time intervals, preventing double counting.
+For the work lower bound, we use the final removal of each non-output value. It must be an uncomputation, since a final measurement would leave a ghost that cannot be cleared later. Its children must still be present, so final removals proceed from ancestors to descendants. When the top vertex of a region is finally removed, the space budget forces many smaller pieces to contain no pebble, so their values must be reconstructed to complete the cleanup below. Repeating this argument at smaller scales gives the work bound. The order of final removals separates the charged time intervals, preventing double counting.
 
 To reduce depth, we parallelize boundary preparation and the cleanup of independent subtrees. Once the subtrees are small enough to process in batches, each cleanup stage reduces their height from $r$ to $O(\log r)$ in $O(r+n/s)$ rounds. The height terms sum to $O(h)$ over these stages, while the $n/s$ term is paid at each of $O(\lambda(h))$ stages. This repeated cost produces the iterated-logarithm term in the depth bound.
 
@@ -350,7 +350,7 @@ The one-block operation $\Contract(T,m,\rho)$ clears the vertices above $F$, ret
 \begin{algorithmic}[1]
 \Require A complete subtree $T$ with $H(T)=r\ge2$. Its leaves are empty, and each internal vertex is either empty or ghosted.
 \Require A boundary size $m$ satisfying $2\le m\le2^{r-1}$, and a flag $\rho\in\{0,1\}$ indicating whether to retain the root of $T$.
-\Ensure The boundary $F$ is returned, and all ghosts in the block above $F$ are exorcised. Within $T$, only its root remains pebbled when $\rho=1$; no pebbles remain there when $\rho=0$. Any remaining ghosts lie in the subtrees rooted at $F$.
+\Ensure The boundary $F$ is returned, and all ghosts in the block above $F$ are exorcised. Within $T$, only its root remains pebbled when $\rho=1$, and no pebbles remain there when $\rho=0$. Any remaining ghosts lie in the subtrees rooted at $F$.
 \State $F\gets\mathsf{Boundary}(T,m)$
 \State Compute and retain $F$ using $\Fast$, tallest subtrees first
 \State Pebble the vertices above $F$ bottom-up
@@ -378,7 +378,7 @@ The boundary $F$ has $m$ vertices, and the block above it has $m-1$ vertices. At
 
 The other possible space peak occurs while preparing $F$. Put $q=r-\lceil\log m\rceil$. Its boundary subtrees have height $q$ or $q+1$, and we compute the taller ones first. A balanced boundary has at least two height-$q$ subtrees. Thus a taller computation starts with at most $m-3$ roots retained and uses at most $m+q-1$ pebbles. The final height-$q$ computation starts with $m-1$ roots retained and uses $m+q$ pebbles if $q\ge2$, or $m$ if $q=1$. Together with the top-block peak, this gives \cref{eq:boundary-space}.
 
-For work, each of the $2^r-1$ vertices is pebbled once. The $2^{r-1}$ leaves are unpebbled once, as are the $m-1$ vertices above $F$; all other removals are ghostings. Since work counts only pebbling and unpebbling,
+For work, each of the $2^r-1$ vertices is pebbled once. The $2^{r-1}$ leaves are unpebbled once, as are the $m-1$ vertices above $F$. All other removals are ghostings. Since work counts only pebbling and unpebbling,
 \[
  K(r,m)=(2^r-1)+2^{r-1}+(m-1).
 \]
@@ -396,11 +396,9 @@ For an equal-depth boundary with $b$ registers allocated to the current block, t
 
 We now combine one-block cleanup into a recursive algorithm and bound its total work. The matching lower bound is proved in \cref{sec:lower-bounds}.
 
-At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, binary search finds this value. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees; see \cref{prop:greedy-boundary}.
+At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, binary search finds this value. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees, as shown in \cref{prop:greedy-boundary}.
 
-\mingyu{Starts from here!}
-
-The procedure $\Clean$ combines one-block cleanup with recursive calls on the boundary subtrees. Its initial call $\Clean(B_h,s,1)$ retains the output root; every recursive call uses $\rho=0$ and clears its subtree completely.
+The procedure $\Clean$ combines one-block cleanup with recursive calls on the boundary subtrees. Its initial call is $\Clean(B_h,s,1)$, with $\rho=1$ to retain the root.
 
 \begin{algorithm}[H]
 \caption{Complete-tree block cleanup $\Clean(T,b,\rho)$}
@@ -437,7 +435,7 @@ Choose $k\ge1$ maximally with $2^k\le\min\{a+1,(b+1)/2\}$. Since the subtree doe
 \]
 Each cut reduces $r$, and thus increases $a$, by at least $k_b(r)$.
 
-Once $a\ge\sqrt b$, every nonterminal cut removes $\Omega(\log(b+1))$ levels. The remaining height is at most $h$, so there are $O(h/\log(b+1))$ such cuts. If $b\ge2h$, the initial gap already exceeds $\sqrt b$. Otherwise $h\le b<2h$; because every cut removes at least one level, at most $\lceil\sqrt b\rceil=O(h/\log(b+1))$ cuts are needed to reach this threshold. This proves the claimed bound.
+Once $a\ge\sqrt b$, every nonterminal cut removes $\Omega(\log(b+1))$ levels. The remaining height is at most $h$, so there are $O(h/\log(b+1))$ such cuts. If $b\ge2h$, the initial gap already exceeds $\sqrt b$. Otherwise $h\le b<2h$. Since every cut removes at least one level, at most $\lceil\sqrt b\rceil=O(h/\log(b+1))$ cuts are needed to reach this threshold. This proves the claimed bound.
 \end{proof}
 
 \begin{theorem}[Work analysis of $\Clean$ ]
@@ -468,6 +466,7 @@ The space bound follows from \cref{eq:boundary-space}.
 \subsection{Parallel depth upper bound}
 \label{sec:parallel-upper}
 
+\mingyu{Starts from here!}
 We now derive a depth upper bound for parallel spooky pebbling at every feasible space budget. The schedule parallelizes both boundary preparation and the cleanup of independent subtrees. Once block cleanup has reduced the subtrees sufficiently, we allocate the space among several jobs and process them in parallel batches. Equal-depth boundaries give these jobs a common height, so they can follow the same schedule.
 At the minimum budget $s=h+1$, our schedule achieves depth $O(n/\log\log n)$. The matching lower bound in \cref{eq:universal-depth} establishes asymptotic optimality.
 
@@ -485,7 +484,7 @@ It starts with no pebbles and any set of ghosts, pebbles every vertex once, and 
 
 \Cref{app:sweep} constructs this schedule even near the minimum budget $q+1$. A single leaf needs one round and one register.
 
-For parallel block cleanup, choose a cut of depth $k$, giving $m=2^k$ boundary subtrees of height $q=r-k$. We prepare it with $\Sweep$ and process the top block levelwise; vertices on a common level have disjoint active sets. The same feasibility conditions in \cref{eq:feasible-cut} apply.
+For parallel block cleanup, choose a cut of depth $k$, giving $m=2^k$ boundary subtrees of height $q=r-k$. We prepare it with $\Sweep$ and process the top block levelwise, since vertices on a common level have disjoint active sets. The same feasibility conditions in \cref{eq:feasible-cut} apply.
 
 \begin{lemma}[Parallel block cleanup]
 \label{cor:parallel-contraction}
@@ -527,7 +526,7 @@ q=\lceil\log t\rceil+2, \qquad m=2^{t-q}.
 \end{equation}
 Then $4t\le2^q<8t$, so $m\le2^t/(4t)$ and $q\le t/2\le2^t/(4t)$. Both cut conditions hold with the local budget $p(t)$. By \cref{cor:parallel-contraction}, one job takes $O(t)$ rounds and $O(2^t)$ work.
 
-Run at most $\lfloor b/p(t)\rfloor$ disjoint jobs concurrently; their assigned budgets sum to at most $b$. Monotonicity of $p$ ensures that at least one job fits at every stage. The $O(1+ap(t)/b)$ batches take altogether
+Run at most $\lfloor b/p(t)\rfloor$ disjoint jobs concurrently, keeping their total assigned budget within $b$. Monotonicity of $p$ ensures that at least one job fits at every stage. The $O(1+ap(t)/b)$ batches take altogether
 \begin{equation}
 O\!\left(\left(1+\frac{ap(t)}b\right)t\right)=O(t+M/b)
 \label{eq:forest-phase}
@@ -574,7 +573,7 @@ rounds and $O(n)$ work. The largest feasible cut is used at each stage, so \cref
 At the transition, \cref{lem:resolver} adds $O(h+n\lambda(h)/b)$ rounds and $O(n\lambda(h))$ work. The initial root computation takes $O(h+n/s)$ rounds and $n$ work. Adding these costs and using $b=\Theta(s)$ proves the bounds. The space bound follows from the budgets in \cref{lem:sweep,cor:parallel-contraction,lem:resolver}.
 \end{proof}
 
-The $nh/\log(s+1)$ work term comes from the large-subtree stages; the $n\lambda(h)$ term comes from repeated batched cleanup. Dividing space among jobs lets more of them run concurrently but can require more cleanup stages. \Cref{sec:separation} identifies budgets where additional work is necessary for optimal depth.
+The $nh/\log(s+1)$ work term comes from the large-subtree stages, while the $n\lambda(h)$ term comes from repeated batched cleanup. Dividing space among jobs lets more of them run concurrently but can require more cleanup stages. \Cref{sec:separation} identifies budgets where additional work is necessary for optimal depth.
 
 When $s=\Theta(n)$, a direct block schedule attains both $O(n)$ work and $O(h)$ depth. Choose a feasible equal-depth boundary with $\Theta(s)$ roots, so its subtrees have constant height. Prepare the boundary with $\Sweep$, compute and uncompute the top block while retaining the output, and fully clean the remaining subtrees in parallel batches.
 
@@ -598,7 +597,7 @@ For a connected region $C$, let $\topv(C)$ be its vertex nearest the root. We pa
 A tree of maximum degree at most three and size $m>a\ge1$ can be partitioned into connected pieces with $a/4<|Q|\le a$.
 \end{lemma}
 \begin{proof}
-For a tree of size $m\ge4$, a centroid's largest adjacent component has size between $(m-1)/3\ge m/4$ and $m/2$. Cutting that edge leaves two parts of sizes between $m/4$ and $3m/4$; sizes two and three are immediate. Repeatedly split parts larger than $a$. Each final part has size at most $a$ and was split from a part larger than $a$, so its size exceeds $a/4$.
+For a tree of size $m\ge4$, a centroid's largest adjacent component has size between $(m-1)/3\ge m/4$ and $m/2$. Cutting that edge leaves two parts of sizes between $m/4$ and $3m/4$. For sizes two and three, the claim is immediate. Repeatedly split parts larger than $a$. Each final part has size at most $a$ and was split from a part larger than $a$, so its size exceeds $a/4$.
 \end{proof}
 
 For a piece $Q$, its top must be pebbled when its parent $p$ is finally removed. We charge for providing that value between the final removals of $\topv(C)$ and $p$. A time boundary below means the configuration after a step or complete round. The relevant distinction is whether $Q$ contains a pebble, regardless of ghosts.
@@ -657,7 +656,7 @@ Dependencies require at least $H(T)$ rounds to reach the root. The placement cou
 \end{equation}
 The work lower bound already gives $D\ge\Pi/s$. We obtain another bound by charging for values that must remain stored over long intervals.
 
-Set $L=\lambda(n)$. In a region of size $m$, we use pieces of size $\Theta(\log m/L)$. A constant fraction of the region lies in pieces whose parents are $\Omega(\log m)$ levels below the region's top. By \cref{eq:final-removal}, their charge intervals have length at least $L$ times the piece size, with the constants chosen as in \cref{app:storage}. Each piece must either be reconstructed or retain a pebble at every relevant time boundary, contributing at least its size to $\Pi+\Area/L$. The logarithmic reduction in piece size permits $\Omega(L)$ chargeable scales; the appendix proves the required depth of this partition recursion.
+Set $L=\lambda(n)$. In a region of size $m$, we use pieces of size $\Theta(\log m/L)$. A constant fraction of the region lies in pieces whose parents are $\Omega(\log m)$ levels below the region's top. By \cref{eq:final-removal}, their charge intervals have length at least $L$ times the piece size, with the constants chosen as in \cref{app:storage}. Each piece must either be reconstructed or retain a pebble at every relevant time boundary, contributing at least its size to $\Pi+\Area/L$. The logarithmic reduction in piece size permits $\Omega(L)$ chargeable scales. The appendix proves the required depth of this partition recursion.
 
 \begin{theorem}[Storage and recomputation]
 \label{thm:weighted}
@@ -710,7 +709,7 @@ Every ordered full binary tree with $N=2^{h-1}$ leaves has $n=2N-1$ vertices and
 \section{Application to RNS point-addition trees}
 \label{sec:cfs-case-study}
 
-Chevignard, Fouque, and Schrottenloher (CFS) evaluate binary trees of elliptic-curve point additions in a residue number system~\cite{CFS2026}. Leaves perform window lookups; internal vertices evaluate projective point-addition formulas modulo an RNS prime. We apply block cleanup to these fixed trees using the costs of the public arithmetic circuits. Both schedules use the same input order, arithmetic kernels, and final output operation.
+Chevignard, Fouque, and Schrottenloher (CFS) evaluate binary trees of elliptic-curve point additions in a residue number system~\cite{CFS2026}. Leaves perform window lookups, and internal vertices evaluate projective point-addition formulas modulo an RNS prime. We apply block cleanup to these fixed trees using the costs of the public arithmetic circuits. Both schedules use the same input order, arithmetic kernels, and final output operation.
 
 Work is the Toffoli/AND-equivalent circuit count, and space includes stored values and active-circuit scratch. For a ghost-only block, prepare the boundary and compute the vertices above it except the top. With the top's children available, clear its ghost using the public direct phase-correction circuit in place of its pebble--unpebble pair. Then uncompute the intermediate vertices and release the boundary. Circuit costs determine which boundaries fit and which save work.
 
@@ -720,7 +719,7 @@ Fix the workspace cap, and let $C(v)$ be the minimum cost within this recursive 
  \qquad C(v)=0\ \text{at a leaf}.
  \label{eq:cfs-cut-work}
 \end{equation}
-The leaf base case is zero because the block using a leaf already pays for preparing and releasing it. Boundary computations are ordered by decreasing individual peak space, and feasibility includes the scratch of each active circuit. The initial output block starts from an empty tree and uses the published root-update circuit; we charge its cost separately.
+The leaf base case is zero because the block using a leaf already pays for preparing and releasing it. Boundary computations are ordered by decreasing individual peak space, and feasibility includes the scratch of each active circuit. The initial output block starts from an empty tree and uses the published root-update circuit. We charge its cost separately.
 
 \Cref{tab:cfs-application} gives the per-prime work for the entire tree subroutine. The P-224 and P-256 trees have 17 and 19 leaves. In both cases the root circuit leaves room for only its two children, fixing the initial cut. The improvement comes from subsequent cleanup blocks, where the workspace allows up to four boundary values. We enumerate all mixed-depth cuts within this recursive scheme.
 
@@ -746,7 +745,7 @@ For P-256 at prime $521177$, leaf computations fall from 82 to 57 and internal-n
 
 \section{Discussion}
 
-Determining all achievable work--depth pairs at a fixed space budget remains open, beyond the separate optima and the separation in \cref{sec:separation}. The lower-bound argument uses the fact that each intermediate value has one parent; shared values in a DAG require a different analysis. Circuit applications also require accounting for unequal value widths and scratch space, as the point-addition comparison illustrates.
+Determining all achievable work--depth pairs at a fixed space budget remains open, beyond the separate optima and the separation in \cref{sec:separation}. The lower-bound argument uses the fact that each intermediate value has one parent, so shared values in a DAG require a different analysis. Circuit applications also require accounting for unequal value widths and scratch space, as the point-addition comparison illustrates.
 
 \appendix
 
@@ -871,7 +870,7 @@ The initial value is $\log^*m_0=L-O(1)$, whereas at termination it is at most $\
 \section{Details of the point-addition comparison}
 \label{app:application}
 
-The comparison uses the public CFS \href{https://gitlab.inria.fr/capsule/qarton-projects/compressed-ec-dlog}{implementation} at commit \texttt{7fedcc5b} and Qarton v1.0.0 at commit \texttt{d55356ba}. Both schedules use the same tree, window indices, lookup tables, and arithmetic circuits. They perform the $(2,2)$ root update once and clear all temporary values and ghosts. A projective-coordinate triple occupies 54 qubits for P-224 and 57 for P-256 at the selected primes. The conservative cap includes fixed inputs and accumulators, live values, and the full scratch of the active circuit; classical measurement records are excluded.
+The comparison uses the public CFS \href{https://gitlab.inria.fr/capsule/qarton-projects/compressed-ec-dlog}{implementation} at commit \texttt{7fedcc5b} and Qarton v1.0.0 at commit \texttt{d55356ba}. Both schedules use the same tree, window indices, lookup tables, and arithmetic circuits. They perform the $(2,2)$ root update once and clear all temporary values and ghosts. A projective-coordinate triple occupies 54 qubits for P-224 and 57 for P-256 at the selected primes. The conservative cap includes fixed inputs and accumulators, live values, and the full scratch of the active circuit. Classical measurement records are excluded.
 
 The scratch requirement limits the boundary size. When directly correcting the top of a ghost-only block, a boundary of size $m$ requires its $m$ values and the $m-2$ intermediate values above them. The top itself is corrected without retaining its value, so this phase holds $2m-2$ live values. Writing $Q_{\mathrm{fixed}}$ for fixed storage, $w$ for the value width, $Q_C$ for phase-correction scratch, and $Q_{\mathrm{cap}}$ for the common cap, feasibility requires
 \[
@@ -879,7 +878,7 @@ Q_{\mathrm{fixed}}+(2m-2)w+Q_C\le Q_{\mathrm{cap}}.
 \]
 This limits cleanup boundaries to four values in both curve instances. The corresponding root-circuit constraint limits the initial boundary to two. Enumerating all cuts at every vertex within the recursive block scheme gives the costs in \cref{tab:cfs-application}.
 
-The public cost model assigns zero Toffoli cost to inverse dummy lookups. To measure the effect of this convention, we also charge each inverse lookup the cost of its forward lookup while keeping both schedules fixed. For P-256 at prime $521177$, the costs then become $16{,}672{,}838$ and $12{,}480{,}256$, a $25.15\%$ reduction. This is a sensitivity calculation on the recorded schedules; it does not synthesize new inverse circuits.
+The public cost model assigns zero Toffoli cost to inverse dummy lookups. To measure the effect of this convention, we also charge each inverse lookup the cost of its forward lookup while keeping both schedules fixed. For P-256 at prime $521177$, the costs then become $16{,}672{,}838$ and $12{,}480{,}256$, a $25.15\%$ reduction. This sensitivity calculation uses the recorded schedules without synthesizing new inverse circuits.
 
 Validation comprised six traces with 1,321 events, checked for dependencies, phases, output updates, cleanup, work, and space. For each of the three curve--prime instances, the public simulator checked both schedules on four basis inputs and two four-term superpositions against independent integer outputs. A four-leaf instance was also checked with fully expanded lookup and arithmetic gates. The cryptographic-size estimates use the public model's symbolic lookup and arithmetic shortcuts.
 
