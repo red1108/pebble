@@ -94,11 +94,11 @@ public:
         for (const Round& round : schedule) execute(round);
     }
 
-    void check_sweep(int root, int height) const {
-        require(state[root] == 1, "Sweep root missing");
+    void check_parallel_pebble(int root, int height) const {
+        require(state[root] == 1, "ParallelPebble root missing");
         for (int level = 1; level < height; ++level)
             for (int v = root << level; v < (root+1) << level; ++v)
-                require(state[v] == 2, "Sweep left a non-root value unghosted");
+                require(state[v] == 2, "ParallelPebble left a non-root value unghosted");
     }
 
     void finish() const {
@@ -159,8 +159,8 @@ void carry_root(Schedule& out, vector<int>& stack, int incoming) {
     stack.push_back(incoming);
 }
 
-// Sweep leaves only its root pebbled; every other vertex is a ghost.
-Schedule ghost_fast_pebble(int root, int vertex_count) {
+// ParallelPebble leaves only its root pebbled; every other vertex is a ghost.
+Schedule ghost_sequential_pebble(int root, int vertex_count) {
     Schedule out;
     auto place = [&out](int v) {
         Round round;
@@ -168,11 +168,11 @@ Schedule ghost_fast_pebble(int root, int vertex_count) {
         out.push_back(std::move(round));
     };
     auto release = [&out](int v) { out.back().ghost.push_back(v); };
-    pebbling::fast_pebble_traversal(root, vertex_count, place, release);
+    pebbling::pebble_traversal(root, vertex_count, place, release);
     return out;
 }
 
-Schedule full_sweep(int root, int height) {
+Schedule full_parallel_pebble(int root, int height) {
     Schedule out;
     for (int depth = height-1; depth >= 0; --depth) {
         Round round;
@@ -183,11 +183,11 @@ Schedule full_sweep(int root, int height) {
     return out;
 }
 
-Schedule sweep(int root, int height, int budget, int vertex_count);
+Schedule parallel_pebble(int root, int height, int budget, int vertex_count);
 
 // Stagger bottom-subtree starts by two advancement rounds. Carry rounds pause
 // all unfinished jobs, as in the manuscript's b >= 2q construction.
-Schedule wavefront_sweep(int root, int height, int budget) {
+Schedule wavefront_parallel_pebble(int root, int height, int budget) {
     int leaves = 1;
     while (2*leaves <= budget/8) leaves *= 2;
     int ell = 1;
@@ -218,7 +218,7 @@ Schedule wavefront_sweep(int root, int height, int budget) {
     return out;
 }
 
-Schedule near_height_sweep(int root, int height, int budget, int vertex_count) {
+Schedule near_height_parallel_pebble(int root, int height, int budget, int vertex_count) {
     int ell = height/4, d = height-ell, jobs = 1 << d;
     require(ell >= 2, "invalid near-height split");
     Schedule out;
@@ -228,31 +228,31 @@ Schedule near_height_sweep(int root, int height, int budget, int vertex_count) {
         require(local_budget >= ell+1, "near-height subtree lacks space");
         int subtree = (root << d)+j;
         if (local_budget >= 2*ell)
-            append_schedule(out, sweep(subtree, ell, local_budget, vertex_count));
+            append_schedule(out, parallel_pebble(subtree, ell, local_budget, vertex_count));
         else
-            append_schedule(out, ghost_fast_pebble(subtree, vertex_count));
+            append_schedule(out, ghost_sequential_pebble(subtree, vertex_count));
         carry_root(out, stack, subtree);
     }
     require(stack.size() == 1 && stack[0] == root,
-            "near-height sweep did not produce its root");
+            "near-height ParallelPebble did not produce its root");
     return out;
 }
 
-Schedule sweep(int root, int height, int budget, int vertex_count) {
-    require(height >= 1 && budget >= 1, "invalid Sweep parameters");
+Schedule parallel_pebble(int root, int height, int budget, int vertex_count) {
+    require(height >= 1 && budget >= 1, "invalid ParallelPebble parameters");
     if (height == 1) {
         Round round;
         round.place.push_back(root);
         return {std::move(round)};
     }
-    require(budget >= height+1, "Sweep lacks minimum space");
-    if (budget >= nodes(height)) return full_sweep(root, height);
-    if (budget < 16) return ghost_fast_pebble(root, vertex_count);
-    if (budget >= 2*height) return wavefront_sweep(root, height, budget);
-    return near_height_sweep(root, height, budget, vertex_count);
+    require(budget >= height+1, "ParallelPebble lacks minimum space");
+    if (budget >= nodes(height)) return full_parallel_pebble(root, height);
+    if (budget < 16) return ghost_sequential_pebble(root, vertex_count);
+    if (budget >= 2*height) return wavefront_parallel_pebble(root, height, budget);
+    return near_height_parallel_pebble(root, height, budget, vertex_count);
 }
 
-int resolver_space(int height) {
+int resolve_space(int height) {
     int power = 1 << height;
     return min(power-1, (16*power+height-1)/height);
 }
@@ -278,7 +278,7 @@ int largest_equal_cut(int height, int budget) {
 
 // Prepare an equal-depth boundary, clear its top block levelwise, then release
 // its roots. The caller subsequently handles the resulting ghost subtrees.
-Schedule block_contract(int root, int height, int cut_depth,
+Schedule contract(int root, int height, int cut_depth,
                         int budget, int vertex_count) {
     int m = 1 << cut_depth, q = height-cut_depth;
     require(q >= 1 && m+q <= budget && 2*m-1 <= budget,
@@ -297,7 +297,7 @@ Schedule block_contract(int root, int height, int cut_depth,
     for (int first = 0; first < m; first += batch_size) {
         vector<Schedule> jobs;
         for (int j = first; j < min(m, first+batch_size); ++j)
-            jobs.push_back(sweep((root << cut_depth)+j, q,
+            jobs.push_back(parallel_pebble((root << cut_depth)+j, q,
                                  local_budget, vertex_count));
         append_schedule(out, parallelize(jobs));
     }
@@ -348,9 +348,9 @@ Result run_parallel(int height, int space_limit) {
     require(minimum <= space_limit && space_limit <= n,
             "space must be in [minimum, n]");
     ParallelSimulator sim(height, space_limit);
-    sim.execute(sweep(1, height, space_limit, n));
-    sim.check_sweep(1, height);
-    require(sim.metrics().place == uint64_t(n), "Sweep did not pebble each vertex once");
+    sim.execute(parallel_pebble(1, height, space_limit, n));
+    sim.check_parallel_pebble(1, height);
+    require(sim.metrics().place == uint64_t(n), "ParallelPebble did not pebble each vertex once");
 
     if (height > 1) {
         int budget = space_limit-1;
@@ -358,12 +358,12 @@ Result run_parallel(int height, int space_limit) {
         vector<int> forest{2, 3};
 
         // Large jobs use one subtree at a time while p(r) exceeds the budget.
-        while (resolver_space(remaining_height) > budget) {
+        while (resolve_space(remaining_height) > budget) {
             int k = largest_equal_cut(remaining_height, budget);
             vector<int> next;
             next.reserve(forest.size() * (1 << k));
             for (int root : forest) {
-                sim.execute(block_contract(root, remaining_height, k, budget, n));
+                sim.execute(contract(root, remaining_height, k, budget, n));
                 for (int j = 0; j < (1 << k); ++j)
                     next.push_back((root << k)+j);
             }
@@ -373,7 +373,7 @@ Result run_parallel(int height, int space_limit) {
 
         // Resolve whole batches of independent subtrees at equal height.
         while (remaining_height > 16) {
-            int per_tree = resolver_space(remaining_height);
+            int per_tree = resolve_space(remaining_height);
             int batch_size = budget/per_tree;
             int q = ceil_log2(remaining_height)+2;
             int k = remaining_height-q;
@@ -386,7 +386,7 @@ Result run_parallel(int height, int space_limit) {
                 for (size_t i = first;
                      i < min(forest.size(), first+static_cast<size_t>(batch_size)); ++i) {
                     int root = forest[i];
-                    jobs.push_back(block_contract(root, remaining_height, k,
+                    jobs.push_back(contract(root, remaining_height, k,
                                                   per_tree, n));
                     for (int j = 0; j < m; ++j)
                         next.push_back((root << k)+j);

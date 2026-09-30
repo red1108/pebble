@@ -8,7 +8,7 @@ Build only when the user explicitly requests a PDF build, using `python3 build.p
 It writes `../paper/main.pdf` and temporary
 files under `../paper/.build/`, outside this Git repository.
 `sequential.cpp` and `parallel.cpp` are the active C++ schedulers. Shared tree,
-metric, and `fast_pebble` traversal code lives in `pebbling_common.hpp`. Put compiled
+metric, and `pebble_traversal` code lives in `pebbling_common.hpp`. Put compiled
 binaries in `../paper/.build/`, never in this repository.
 
 Commit each user-requested manuscript revision in this repository after
