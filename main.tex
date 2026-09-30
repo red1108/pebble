@@ -424,11 +424,13 @@ The procedure $\Clean$ combines one-block cleanup with recursive calls on the bo
 
 Each recursive call starts with internal ghosts and empty leaves, as required. Retaining the current root reserves one register; otherwise the calls reuse all $b$ registers. Since each boundary subtree has height at most $r-1$, its budget $b-\rho$ remains feasible.
 
-For analysis, put $b=s-1$, the budget of every call below the output. Each block costs constant work per leaf in its subtree, so we bound how many blocks contain a given leaf. We compare progress with the largest feasible equal-depth cut, which is among the algorithm's choices. As the height decreases, the fixed budget permits deeper cuts.
+For analysis, put $b=s-1$, the budget of every call below the output. Each block costs constant work per leaf in its subtree, so we bound how many blocks contain a given leaf.
+
+A balanced boundary may span two adjacent depths, so the height decrease can differ between recursive branches. To bound the number of stages, we introduce $k_b(r)$, the depth of the largest feasible equal-depth cut, as a lower bound on the height decrease along every branch. The chosen balanced boundary is at least as large as this equal-depth boundary and therefore has no shallower vertices.
 
 \begin{lemma}[Number of cleanup stages]
 \label{lem:slack}
-Suppose $b\ge h$ and $r_0\le h-1$. At each height $r$ with $2^r-1>b$, let $k_b(r)$ be the largest cut satisfying \cref{eq:feasible-cut}. Any sequence that decreases $r$ by at least $k_b(r)$ at each stage reaches $2^r-1\le b$ in $O(1+h/\log(b+1))$ stages.
+Suppose $b\ge h$ and $r_0\le h-1$. At each height $r$ with $2^r-1>b$, let $k_b(r)$ be the largest cut depth satisfying \cref{eq:feasible-cut}. Any sequence that decreases $r$ by at least $k_b(r)$ at each stage reaches $2^r-1\le b$ in $O(1+h/\log(b+1))$ stages.
 \end{lemma}
 \begin{proof}
 Put $a=b-r\ge1$. This gap increases as the remaining height decreases. The two cut conditions in \cref{eq:feasible-cut} become
