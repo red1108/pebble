@@ -103,7 +103,7 @@ Seoul National University, Seoul 08826, Republic of Korea}
 \vspace{-1.4em}
 \begin{abstract}
 
-Pebble games model computations under a fixed space budget. Spooky pebbling allows quantum memory to be released by measurement, with the resulting phases corrected later. We study two-input computations with binary-tree dependencies and determine their optimal work and parallel depth. For the complete tree $B_h$ with $n=2^h-1$ vertices and every space budget $h+1\le s\le n$, we give an algorithm with asymptotically optimal work $\Theta(nh/\log(s+1))$. We also construct a parallel schedule with optimal depth
+Pebble games model computations under a fixed space budget. Spooky pebbling allows quantum memory to be released by measurement, with the resulting phases corrected later. We study two-input computations with binary-tree dependencies and determine the optimal work and parallel depth for complete binary trees. For the complete tree $B_h$ with $n=2^h-1$ vertices and every space budget $h+1\le s\le n$, we give an algorithm with asymptotically optimal work $\Theta(nh/\log(s+1))$. We also construct a parallel schedule with optimal depth
 \[
  \Theta\!\left(h+\frac ns
  \max\!\left\{\frac{h}{\log(s+1)},\,1+\log^*h\right\}\right).
@@ -113,9 +113,9 @@ The work bound resolves the time-optimality question left open by Kornerup, Sadu
 
 \section{Introduction}
 
-Consider a quantum out-of-place operation $f$ with $n$ inputs:
+Consider a quantum out-of-place operation $f$ with $k$ inputs:
 \begin{equation}
-    \ket{a_1}\cdots\ket{a_n}\ket{0} \longmapsto \ket{a_1}\cdots\ket{a_n}\ket{f(a_1,\ldots,a_n)}.
+    \ket{a_1}\cdots\ket{a_k}\ket{0} \longmapsto \ket{a_1}\cdots\ket{a_k}\ket{f(a_1,\ldots,a_k)}.
 \end{equation}
 
 This operation must act coherently on superpositions of inputs. When the output of one operation serves as an input to another, the intermediate value must be stored in a quantum register until it is used. Repeatedly combining pairs of values forms a binary tree of computations when each value is used as an input at most once. Such a structure appears when adding elliptic-curve points~\cite{CFS2026}, as we discuss in \cref{sec:cfs-case-study}.
@@ -202,15 +202,13 @@ We also apply our cleanup strategy to a fixed point-addition tree in the public 
 
 
 \mingyu{todo: fix this at last}
-Our sequential strategy begins by retaining a boundary of subtree values. With those values available, it computes the root and uncomputes the vertices above the boundary before releasing it. This leaves the root pebbled and ghosts only in the smaller subtrees below. To clean each subtree, we again retain boundary values while computing and uncomputing the vertices above them. This clears a block of levels at once. We then release the retained values and repeat on the smaller subtrees. We call this procedure block cleanup.
+Our sequential strategy retains a boundary of subtree values while computing and uncomputing the vertices above it. This \emph{block cleanup} leaves smaller subtrees to be cleared recursively. As the remaining subtree height decreases, the same cleanup budget permits deeper blocks. Each leaf therefore participates in $O(h/\log(s+1))$ blocks, even at the minimum space budget. Since a block costs constant work per leaf in its subtree, summing these charges gives the sequential upper bound.
 
-The space budget determines how many levels can be cleared together. After reserving one pebble for the output, cleanup has budget $b=s-1$. As the remaining subtrees become shorter, the same budget allows more values to be retained and larger blocks to be cleared. This leads to $O(h/\log(s+1))$ cleanup stages, even when the original budget is only $h+1$. The subtrees at any one stage are disjoint, and their total size is $O(n)$. Each stage therefore takes $O(n)$ work, giving the sequential upper bound.
+For the work lower bound, we use the final removal of each non-output value. It must be an uncomputation, since a final measurement would leave a ghost that cannot be cleared later. Its children must still be present, so final removals proceed from ancestors to descendants. When the top vertex of a region is finally removed, the space budget forces many smaller pieces to contain no pebble; their values must be reconstructed to complete the cleanup below. Repeating this argument at smaller scales gives the work bound. The order of final removals separates the charged time intervals, preventing double counting.
 
-For the work lower bound, we consider the last time each non-output value is removed. This final removal must be an uncomputation: a final measurement would leave a ghost with no later computation to clear it. Its children must therefore be present at that time. Final removals occur from ancestors to descendants. We partition a connected region into smaller connected pieces. When the top vertex of the region is finally removed, the space budget forces many pieces to contain no pebble. Values in those pieces must be recomputed to finish the cleanup below. Repeating this argument at smaller scales gives the required work. The order of final removals ensures that no placement is counted twice.
+To reduce depth, we parallelize boundary preparation and the cleanup of independent subtrees. Once the subtrees are small enough to process in batches, each cleanup stage reduces their height from $r$ to $O(\log r)$ in $O(r+n/s)$ rounds. The height terms sum to $O(h)$ over these stages, while the $n/s$ term is paid at each of $O(\lambda(h))$ stages. This repeated cost produces the iterated-logarithm term in the depth bound.
 
-To reduce depth, we compute independent parts of the tree in parallel. We first show how to compute the root of a height-$r$ subtree with a feasible budget $b$ in $O(r+2^r/b)$ rounds. We use this procedure to prepare the retained values for block cleanup. Initial cleanup stages make the remaining subtrees small enough to process many of them together. We then clear blocks that reduce their heights from $r$ to $O(\log r)$. Each stage takes $O(r+n/b)$ rounds. The heights sum to $O(h)$, but the $n/b$ term is paid at each of $O(\lambda(h))$ stages. This repeated cost produces the iterated-logarithm term in the depth bound.
-
-The matching depth lower bound requires more than counting operations. A value may occupy a register for many rounds while waiting to be used. We again partition the tree into connected pieces and use the order of final removals. Each piece must either keep a pebble for a sufficiently long interval or become empty and later recompute its values. Counting both possibilities across smaller and smaller pieces gives the cumulative-storage lower bound. A stronger form of this argument shows that achieving cumulative storage $O(n\lambda(n))$ requires $\Omega(n\lambda(n))$ work. At space $\Theta(n/h)$, every depth-optimal strategy has cumulative storage at most this order, which proves the separation between minimum work and the work needed for minimum depth.
+For the depth lower bound, we also charge for values kept in memory: each piece either retains a pebble over a long interval or loses all its pebbles and must be reconstructed. Summing these charges across scales gives the cumulative-storage lower bound. The same argument shows that cumulative storage $O(n\lambda(n))$ requires $\Omega(n\lambda(n))$ work. At space $\Theta(n/h)$, this applies to every depth-optimal strategy and establishes the separation between minimum work and the work required for optimal depth.
 
 \section{Pebbling models}
 \label{sec:models}
@@ -295,12 +293,12 @@ Any parallel strategy can be serialized into a sequential one by executing each 
 
 The computation has two parts: compute the root value from the bottom, then clear every other vertex while retaining the root. With space $s=n$, we can hold all vertex values at once. Pebbling the tree bottom-up and unpebbling every non-root vertex top-down uses $n+(n-1)=2n-1$ work. Under a smaller space budget, values must be released before the cleanup that needs them, and recovering those values requires additional work.
 
-The bottom-up \texttt{fast\_pebble} routine of KSS, which we call $\Fast$, computes the root with $O(n)$ work using the minimum feasible $h+1$ pebbles, but leaves ghosts below it. KSS gave an $O(n\log n)$-step strategy to clear these ghosts at the same minimum budget~\cite[Theorem~5.5]{KSS2025}. The additional work comes from reconstructing child values during cleanup. Our strategy retains selected subtree roots while computing a block above them, then uncomputes that block before releasing those values. We develop this block cleanup in \cref{sec:block-cleanup} and analyze its sequential work and parallel depth in the following subsections. \mingyu{We should discuss little bit more about parallel scheduling and work-depth tradeoff.}
+The bottom-up \texttt{fast\_pebble} routine of KSS, which we call $\Fast$, computes the root with $O(n)$ work using the minimum feasible $h+1$ pebbles, but leaves ghosts below it. KSS gave an $O(n\log n)$-step strategy to clear these ghosts at the same minimum budget~\cite[Theorem~5.5]{KSS2025}. The additional work comes from reconstructing child values during cleanup. We reduce this recomputation through block cleanup, introduced in \cref{sec:block-cleanup}, then analyze its sequential work and parallel depth. \mingyu{We should discuss little bit more about parallel scheduling and work-depth tradeoff.}
 
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
 
-For a complete subtree $T$ rooted at $v$ with $H(T)=r$, $\Fast(T)$ computes its children recursively, pebbles $v$, and releases the children afterward. An internal child is ghosted because its own children have already been released. This is the bottom-up root-computation routine in the KSS construction~\cite[Theorem~5.5]{KSS2025}. For a pebbled vertex $u$, let $\Release(u)$ mean $\Unp(u)$ if $u$ is a leaf, and $\Ghost(u)$ otherwise.
+For a complete subtree $T$ rooted at $v$ with $H(T)=r$, $\Fast(T)$ computes its children recursively, pebbles $v$, and releases the children afterward. An internal child is ghosted because its own children have already been released. For a pebbled vertex $u$, let $\Release(u)$ mean $\Unp(u)$ if $u$ is a leaf, and $\Ghost(u)$ otherwise.
 
 \begin{algorithm}[H]
 \caption{Bottom-up root computation $\Fast(T)$}
@@ -319,16 +317,14 @@ For a complete subtree $T$ rooted at $v$ with $H(T)=r$, $\Fast(T)$ computes its 
 \end{algorithmic}
 \end{algorithm}
 
-Every vertex is pebbled once, and every leaf other than the root is unpebbled once. Thus $\Fast(T)$ uses $\Theta(2^r)$ work. From an empty tree, this is optimal up to constants for root computation because every vertex must be computed at least once. Space usage peaks at $r+1$ pebbles for $r\ge2$, or one pebble for a leaf. Its root is ready for use, but the internal ghosts still require cleanup.
+Every vertex is pebbled once, and every leaf other than the root is unpebbled once. Thus $\Fast(T)$ uses $\Theta(2^r)$ work. From an empty tree, this is optimal up to constants for root computation because every vertex must be computed at least once. Space usage peaks at $r+1$ pebbles for $r\ge2$, or one pebble for a leaf.
 
 \subsection{Block cleanup}
 \label{sec:block-cleanup}
 
-Our key idea is to clean up the tree in \emph{blocks}. Starting at a subtree's root, extend a block downward as far as the space budget permits. The vertices at its bottom form the boundary $F$. Compute and retain the values at $F$, then pebble the vertices above it upward to the root and unpebble them downward toward $F$. Finally, release $F$ and clean the subtrees rooted there recursively.
+Our key idea is to clean up the tree in \emph{blocks}. Starting at a subtree's root, we extend a block downward as far as the space budget permits. Its bottom vertices form the boundary $F$. Holding their values lets us compute and uncompute the vertices above $F$ without repeatedly reconstructing intermediate values. After releasing $F$, we recursively clean the subtrees rooted there.
 
-For a complete subtree of height $r$, construct a balanced boundary $F$ of $m$ vertices, where $2\le m\le2^{r-1}$, using \cref{alg:boundary}. The vertices of $F$ lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. Compute the values at $F$ with $\Fast$, processing the tallest boundary subtrees first. Pebble the vertices above $F$ from bottom to top, then unpebble them from top to bottom, retaining the root in the output-producing call. Apply $\Release(u)$ to each $u\in F$, and recursively clean the subtree rooted at each such $u$.
-
-Keeping the values at $F$ available during uncomputation avoids repeatedly reconstructing intermediate vertices. Thus sequential block cleanup achieves optimal work $\Theta(nh/\log(s+1))$ under space budget $s$. At the minimum budget $s=h+1$, this is $\Theta(n\log n/\log\log n)$, improving the $O(n\log n)$ bound of KSS~\cite{KSS2025}. At $s=n$, it gives natural optimal work $\Theta(n)$.
+For a complete subtree of height $r$, \cref{alg:boundary} constructs a balanced boundary of $m$ vertices, where $2\le m\le2^{r-1}$. Its vertices lie at depths $\lfloor\log m\rfloor$ or $\lceil\log m\rceil$. We prepare their values with $\Fast$, processing the tallest boundary subtrees first.
 
 \begin{algorithm}[H]
 \caption{Constructing a balanced boundary $\mathsf{Boundary}(T,m)$}
@@ -345,7 +341,7 @@ Keeping the values at $F$ available during uncomputation avoids repeatedly recon
 \end{algorithmic}
 \end{algorithm}
 
-The space budget determines the largest feasible boundary size $m$, and $\mathsf{Boundary}(T,m)$ gives the corresponding boundary $F$. The vertices above $F$ form the block. $\Contract(T,m,\rho)$ exorcises this block in one pass, retaining the root when $\rho=1$, and returns $F$ for recursive cleanup. \Cref{lem:contract} analyzes the cost of this one-block operation.
+The one-block operation $\Contract(T,m,\rho)$ clears the vertices above $F$, retaining the root when $\rho=1$, and returns $F$ for recursive cleanup. Its cost determines how large a boundary the budget permits.
 
 
 \begin{algorithm}[H]
@@ -374,7 +370,7 @@ For $r\ge2$ and $2\le m\le2^{r-1}$, $\Contract(T,m,0)$ has peak space and work
  K(r,m)&=3\cdot2^{r-1}+m-2. \label{eq:block-work}
 \end{align}
 
-It leaves no pebbles and confines all ghosts to the boundary subtrees. $\Contract(T,m,1)$ retains the root, reducing the work by one without changing the peak space.
+$\Contract(T,m,1)$ retains the root, reducing the work by one without changing the peak space.
 \end{lemma}
 
 \begin{proof}
@@ -398,7 +394,7 @@ For an equal-depth boundary with $b$ registers allocated to the current block, t
 \subsection{Sequential work analysis}
 \label{sec:sequential}
 
-We now analyze how block cleanup reduces total work. \Cref{sec:lower-bounds} shows that the resulting bound is asymptotically optimal.
+We now combine one-block cleanup into a recursive algorithm and bound its total work. The matching lower bound is proved in \cref{sec:lower-bounds}.
 
 At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, binary search finds this value. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees; see \cref{prop:greedy-boundary}.
 
@@ -411,10 +407,10 @@ The procedure $\Clean$ combines one-block cleanup with recursive calls on the bo
 \label{alg:seq-clean}
 \begin{algorithmic}[1]
 \Require A complete subtree $T$ with $H(T)=r$.
-\Require A space budget $b\ge r+1$ for $r\ge2$ ($b\ge1$ for a leaf), a flag indicating whether to retain the root of $T$.
+\Require A space budget $b\ge r+1$ for $r\ge2$ ($b\ge1$ for a leaf), and a flag $\rho\in\{0,1\}$ indicating whether to retain the root of $T$.
 \Ensure Exorcise $T$ and clear all its pebbles, retaining the root when $\rho=1$.
 \If{$r=1$}
- \State Place the root if $\rho=1$; \Return
+ \State Pebble the root if $\rho=1$; \Return
 \EndIf
 \State Choose the largest $2\le m\le2^{r-1}$ with $S(r,m)\le b$
 \State $F\gets\Contract(T,m,\rho)$
@@ -424,7 +420,7 @@ The procedure $\Clean$ combines one-block cleanup with recursive calls on the bo
 
 Each recursive call starts with internal ghosts and empty leaves. Since each boundary subtree has height at most $r-1$, the remaining budget $b-\rho$ is feasible. For analysis, we write $b=s-1$ for the budget available below the output.
 
-Each block costs constant work per leaf, so we bound the number of blocks containing any given leaf. A balanced boundary may span two adjacent depths, so we introduce $k_b(r)$, the largest feasible equal-depth cut depth, to lower-bound the height decrease along every branch. The chosen boundary contains at least $2^{k_b(r)}$ vertices, so every recursive branch loses at least $k_b(r)$ levels.
+Each block costs constant work per leaf, so we bound how many blocks contain a given leaf. Because a balanced boundary may span two adjacent depths, we introduce $k_b(r)$, the largest feasible equal-depth cut depth, to bound the height decrease along every branch.
 
 \begin{lemma}[Number of cleanup stages]
 \label{lem:slack}
@@ -465,7 +461,7 @@ W=O(n)+O\!\left(n\left(1+\frac{h}{\log(b+1)}\right)\right)
 \]
 where $b+1=s$, $\log s=\Theta(\log(s+1))$, and $\log(s+1)\le h$ because $s\le n=2^h-1$.
 
-Also, by \cref{eq:boundary-space}, the space bound holds throughout the process.
+The space bound follows from \cref{eq:boundary-space}.
 
 \end{proof}
 
@@ -475,21 +471,21 @@ Also, by \cref{eq:boundary-space}, the space bound holds throughout the process.
 We now derive a depth upper bound for parallel spooky pebbling at every feasible space budget. The schedule parallelizes both boundary preparation and the cleanup of independent subtrees. Once block cleanup has reduced the subtrees sufficiently, we allocate the space among several jobs and process them in parallel batches. Equal-depth boundaries give these jobs a common height, so they can follow the same schedule.
 At the minimum budget $s=h+1$, our schedule achieves depth $O(n/\log\log n)$. The matching lower bound in \cref{eq:universal-depth} establishes asymptotic optimality.
 
-For the initial root computation and boundary preparation, we use $\Sweep(q,b)$, a parallel counterpart of $\Fast$ that computes and retains the root of a height-$q$ subtree using at most $b$ registers. It overlaps independent computations and ghosts every non-root value after use, including leaves. These ghosts are removed during the subsequent cleanup.
+For the initial root computation and boundary preparation, we use $\Sweep$, a parallel counterpart of $\Fast$.
 
 \begin{lemma}[Parallel root computation]
 \label{lem:sweep}
-For a complete subtree of height $q$ and budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
+For a complete subtree of height $q$ and space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
 \begin{equation}
 O\!\left(q+\frac{2^q}{b}\right).
 \label{eq:sweep}
 \end{equation}
-It starts with no pebbles and any set of ghosts, pebbles every vertex once, and ghosts every non-root vertex after its parent uses it. Its space is at most $b$.
+It starts with no pebbles and any set of ghosts, pebbles every vertex once, and ghosts every non-root vertex after its parent uses it.
 \end{lemma}
 
-The bound combines the dependency height with the cost of processing the tree under budget $b$. \Cref{app:sweep} constructs the schedule even near the minimum $q+1$. A single leaf needs one round and one register.
+\Cref{app:sweep} constructs this schedule even near the minimum budget $q+1$. A single leaf needs one round and one register.
 
-To clear one block, choose a cut of depth $k$, with $m=2^k$ boundary subtrees of height $q=r-k$. The conditions $m+q\le b$ and $2m-1\le b$ in \cref{eq:feasible-cut} cover the two space peaks: preparing the boundary while retaining completed roots, and storing the boundary together with the vertices above it. We prepare the boundary with $\Sweep$, then compute and uncompute the top block one level per round. Vertices on a common level have disjoint active sets.
+For parallel block cleanup, choose a cut of depth $k$, giving $m=2^k$ boundary subtrees of height $q=r-k$. We prepare it with $\Sweep$ and process the top block levelwise; vertices on a common level have disjoint active sets. The same feasibility conditions in \cref{eq:feasible-cut} apply.
 
 \begin{lemma}[Parallel block cleanup]
 \label{cor:parallel-contraction}
@@ -501,7 +497,7 @@ O\!\left(r+\frac{2^r}{b}\right).
 The block finishes with no pebbles, and all remaining ghosts lie in the boundary subtrees.
 \end{lemma}
 \begin{proof}
-Use $\Sweep$ to prepare and retain the boundary roots. The batching construction in \cref{lem:frontier} reserves space for roots already completed and uses the remaining space for active computations. It takes $O(q+m2^q/b)$ rounds and $O(m2^q)$ work.
+By \cref{lem:frontier}, preparing and retaining the boundary with $\Sweep$ takes $O(q+m2^q/b)$ rounds and $O(m2^q)$ work within budget $b$.
 
 With the boundary present, the $k$ levels above it take $k$ rounds to pebble and $k$ rounds to unpebble, using $2(m-1)$ work. Apply $\Release$ to the boundary roots in one further round, adding at most $m$ work. Both phases fit by \cref{eq:feasible-cut}, and substituting $q+k=r$ and $m2^q=2^r$ gives the stated bounds.
 \end{proof}
@@ -511,7 +507,7 @@ To process smaller subtrees together, give each height-$r$ job enough space for 
 p(r)=\min\left\{2^r-1,\left\lceil\frac{16\cdot2^r}{r}\right\rceil\right\}.
 \label{eq:resolver-space}
 \end{equation}
-The budget $p(r)=\Theta(2^r/r)$ is nondecreasing. It allows up to $\lfloor b/p(r)\rfloor$ jobs to run together, each reducing its height to $O(\log r)$. The routine $\Resolve$ processes all jobs of a height in batches, then repeats on the smaller subtrees. These repeated height reductions produce the iterated logarithm in its cost.
+The routine $\Resolve$ uses this nondecreasing budget $p(r)=\Theta(2^r/r)$ to process equal-height jobs in batches, repeating on the smaller subtrees left by each stage.
 
 \begin{lemma}[Parallel cleanup of a forest]
 \label{lem:resolver}
@@ -541,7 +537,7 @@ rounds and $O(M)$ work. Each batch leaves no pebbles, so its registers can be re
 For $t>16$, the height update $f(t)=\lceil\log t\rceil+2$ satisfies $f(t)\le t/2$. Thus the heights over all stages sum to $O(r)$. Moreover, $f(f(t))\le\log t$ for $t\ge256$, so there are $O(\lambda(r))$ stages. Summing \cref{eq:forest-phase} gives $O(r+M\lambda(r)/b)$ rounds. Each stage costs $O(M)$ work, giving the work bound.
 \end{proof}
 
-The complete schedule uses the full cleanup budget while $p(r)>b$ and switches to $\Resolve$ once $p(r)\le b$, with $b=s-1$ after reserving the output register.
+After computing the output, the complete schedule has cleanup budget $b=s-1$. It processes subtrees one at a time until $p(r)\le b$, when $\Resolve$ becomes feasible.
 
 \begin{algorithm}[H]
 \caption{Parallel block cleanup on complete trees}
@@ -575,7 +571,7 @@ A\,O(r+2^r/b)=O(n/b)
 \]
 rounds and $O(n)$ work. The largest feasible cut is used at each stage, so \cref{lem:slack} bounds their number by $O(h/\log(b+1))$.
 
-At the transition, \cref{lem:resolver} adds $O(h+n\lambda(h)/b)$ rounds and $O(n\lambda(h))$ work. The initial root computation takes $O(h+n/s)$ rounds and $n$ work. Adding these costs and using $b=\Theta(s)$ proves the bounds. The retained root occupies one register, and every cleanup stage fits within the other $b$ registers.
+At the transition, \cref{lem:resolver} adds $O(h+n\lambda(h)/b)$ rounds and $O(n\lambda(h))$ work. The initial root computation takes $O(h+n/s)$ rounds and $n$ work. Adding these costs and using $b=\Theta(s)$ proves the bounds. The space bound follows from the budgets in \cref{lem:sweep,cor:parallel-contraction,lem:resolver}.
 \end{proof}
 
 The $nh/\log(s+1)$ work term comes from the large-subtree stages; the $n\lambda(h)$ term comes from repeated batched cleanup. Dividing space among jobs lets more of them run concurrently but can require more cleanup stages. \Cref{sec:separation} identifies budgets where additional work is necessary for optimal depth.
@@ -848,7 +844,7 @@ In both cases each vertex is computed once, giving $O(m2^q)$ work, and the $m$ r
 \section{The storage--recomputation lower bound}
 \label{app:storage}
 
-We prove \cref{thm:weighted} by choosing partitions for which each region contributes a constant fraction of its size to $\Pi+\Area/L$, and each vertex belongs to $\Omega(L)$ successive regions. Set $L=1+\log^*n$. When $L$ is bounded, $\Pi\ge n$ gives the result after adjusting the absolute constant. Assume below that $L$ exceeds a sufficiently large absolute constant.
+To prove \cref{thm:weighted}, set $L=1+\log^*n$. For bounded $L$, the bound follows from $\Pi\ge n$ after adjusting the absolute constant. We therefore assume that $L$ is sufficiently large and construct the partitions described in \cref{sec:area}.
 
 Start with the larger child subtree of the output, of size $m_0\ge(n-1)/2$. Recursively partition connected regions until their sizes are at most $M_L=2^{L^2}$. In a region $C$ of size $m>M_L$, set
 \[
