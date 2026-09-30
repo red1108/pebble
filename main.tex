@@ -396,7 +396,7 @@ For an equal-depth boundary with $b$ registers allocated to the current block, t
 
 We now combine one-block cleanup into a recursive algorithm and bound its total work. The matching lower bound is proved in \cref{sec:lower-bounds}.
 
-At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, binary search finds this value. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees, as shown in \cref{prop:greedy-boundary}.
+At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, we find this value by binary search. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees, as shown in \cref{prop:greedy-boundary}.
 
 The procedure $\Clean$ combines one-block cleanup with recursive calls on the boundary subtrees. Its initial call is $\Clean(B_h,s,1)$, with $\rho=1$ to retain the root.
 
@@ -404,7 +404,7 @@ The procedure $\Clean$ combines one-block cleanup with recursive calls on the bo
 \caption{Complete-tree block cleanup $\Clean(T,b,\rho)$}
 \label{alg:seq-clean}
 \begin{algorithmic}[1]
-\Require A complete subtree $T$ with $H(T)=r$.
+\Require A complete subtree $T$ with $H(T)=r$, no pebbles, and no ghosts on leaves.
 \Require A space budget $b\ge r+1$ for $r\ge2$ ($b\ge1$ for a leaf), and a flag $\rho\in\{0,1\}$ indicating whether to retain the root of $T$.
 \Ensure Exorcise $T$ and clear all its pebbles, retaining the root when $\rho=1$.
 \If{$r=1$}
@@ -435,10 +435,10 @@ Choose $k\ge1$ maximally with $2^k\le\min\{a+1,(b+1)/2\}$. Since the subtree doe
 \]
 Each cut reduces $r$, and thus increases $a$, by at least $k_b(r)$.
 
-Once $a\ge\sqrt b$, every nonterminal cut removes $\Omega(\log(b+1))$ levels. The remaining height is at most $h$, so there are $O(h/\log(b+1))$ such cuts. If $b\ge2h$, the initial gap already exceeds $\sqrt b$. Otherwise $h\le b<2h$. Since every cut removes at least one level, at most $\lceil\sqrt b\rceil=O(h/\log(b+1))$ cuts are needed to reach this threshold. This proves the claimed bound.
+Once $a\ge\sqrt b$, every nonterminal cut removes $\Omega(\log(b+1))$ levels. The remaining height is at most $h$, so there are $O(h/\log(b+1))$ such cuts. If $b\ge2h$, the initial gap already exceeds $\sqrt b$. Otherwise $h\le b<2h$. Since every cut removes at least one level, at most $\lceil\sqrt b\rceil=O(h/\log(b+1))$ cuts are needed to reach this threshold.
 \end{proof}
 
-\begin{theorem}[Work analysis of $\Clean$ ]
+\begin{theorem}[Work analysis of $\Clean$]
 \label{thm:seq-upper}
 For $n=2^h-1$ and $h+1\le s\le n$, \cref{alg:seq-clean} uses at most $s$ pebbles and work $W=O(nh/\log(s+1))$.
 \end{theorem}
@@ -466,23 +466,24 @@ The space bound follows from \cref{eq:boundary-space}.
 \subsection{Parallel depth upper bound}
 \label{sec:parallel-upper}
 
-\mingyu{Starts from here!}
-We now derive a depth upper bound for parallel spooky pebbling at every feasible space budget. The schedule parallelizes both boundary preparation and the cleanup of independent subtrees. Once block cleanup has reduced the subtrees sufficiently, we allocate the space among several jobs and process them in parallel batches. Equal-depth boundaries give these jobs a common height, so they can follow the same schedule.
+We now derive a depth upper bound for parallel spooky pebbling at every feasible space budget. The schedule parallelizes both boundary preparation and the cleanup of independent subtrees. Once block cleanup has reduced the subtrees sufficiently, we allocate the space among several jobs and process them in parallel batches. We use equal-depth boundaries so that the resulting subtrees have the same height and can follow the same schedule.
 At the minimum budget $s=h+1$, our schedule achieves depth $O(n/\log\log n)$. The matching lower bound in \cref{eq:universal-depth} establishes asymptotic optimality.
 
 For the initial root computation and boundary preparation, we use $\Sweep$, a parallel counterpart of $\Fast$.
 
 \begin{lemma}[Parallel root computation]
 \label{lem:sweep}
-For a complete subtree of height $q$ and space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
+For a complete subtree $T$ of height $q$ and space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
 \begin{equation}
 O\!\left(q+\frac{2^q}{b}\right).
 \label{eq:sweep}
 \end{equation}
-It starts with no pebbles and any set of ghosts, pebbles every vertex once, and ghosts every non-root vertex after its parent uses it.
+
+Starting from $P\cap V(T)=\varnothing$ and arbitrary $G$, each vertex is pebbled once. Every non-root vertex is ghosted after use.
+
 \end{lemma}
 
-\Cref{app:sweep} constructs this schedule even near the minimum budget $q+1$. A single leaf needs one round and one register.
+The construction is given in \cref{app:sweep}. A single leaf needs one round and one register.
 
 For parallel block cleanup, choose a cut of depth $k$, giving $m=2^k$ boundary subtrees of height $q=r-k$. We prepare it with $\Sweep$ and process the top block levelwise, since vertices on a common level have disjoint active sets. The same feasibility conditions in \cref{eq:feasible-cut} apply.
 
