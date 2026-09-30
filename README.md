@@ -3,7 +3,7 @@
 `main.tex` is the tracked manuscript. It uses `references.bib` and
 `figs/binary_pebbling_concept.png` from this repository.
 
-Run `python3 build.py` from any directory. The PDF is written to
+When a PDF build is requested, run `python3 build.py` from any directory. The PDF is written to
 `../paper/main.pdf`, and LaTeX intermediates go to `../paper/.build/`.
 No PDF or build outputs belong in this Git repository.
 
@@ -33,3 +33,8 @@ two regression schedules. The sequential `--test` suite checks 1,018
 height/budget cases and 4,072 full
 schedules. The parallel suite checks round legality and resources across all
 budgets through height 8 and selected larger cases.
+
+The surrounding local workspace is mapped in `../README.md`. Historical
+manuscripts, superseded reports and old handoffs are indexed in
+`../archive/README.md`, outside this Git repository. The parent `.ignore`
+keeps archives, build outputs and external dependencies out of default searches.
