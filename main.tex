@@ -362,7 +362,7 @@ The one-block operation $\Contract(T,m,\rho)$ clears the vertices above $F$, ret
 
 
 
-\begin{lemma}[Cost of one-block cleanup]
+\begin{lemma}[Work and space analysis of $\Contract$]
 \label{lem:contract}
 For $r\ge2$ and $2\le m\le2^{r-1}$, $\Contract(T,m,0)$ has peak space and work
 \begin{align}
@@ -420,7 +420,7 @@ Each recursive call starts with internal ghosts and empty leaves. Since each bou
 
 Each block costs constant work per leaf, so we bound how many blocks contain a given leaf. Because a balanced boundary may span two adjacent depths, we introduce $k_b(r)$, the largest feasible equal-depth cut depth, to bound the height decrease along every branch.
 
-\begin{lemma}[Number of cleanup stages]
+\begin{lemma}[Stage bound for block cleanup]
 \label{lem:slack}
 Suppose $b\ge h$ and $r_0\le h-1$. At each height $r$ with $2^r-1>b$, let $k_b(r)$ be the largest cut depth satisfying \cref{eq:feasible-cut}. Any sequence that decreases $r$ by at least $k_b(r)$ at each stage reaches $2^r-1\le b$ in $O(1+h/\log(b+1))$ stages.
 \end{lemma}
@@ -471,7 +471,7 @@ At the minimum budget $s=h+1$, our schedule achieves depth $O(n/\log\log n)$. Th
 
 For the initial root computation and boundary preparation, we use $\Sweep$, a parallel counterpart of $\Fast$.
 
-\begin{lemma}[Parallel root computation]
+\begin{lemma}[Depth analysis of $\Sweep$]
 \label{lem:sweep}
 For a complete subtree $T$ of height $q$ and space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
 \begin{equation}
@@ -487,7 +487,7 @@ The construction is given in \cref{app:sweep}. A single leaf needs one round and
 
 For parallel block cleanup, choose a cut of depth $k$, giving $m=2^k$ boundary subtrees of height $q=r-k$. We prepare it with $\Sweep$ and process the top block levelwise, since vertices on a common level have disjoint active sets. The same feasibility conditions in \cref{eq:feasible-cut} apply.
 
-\begin{lemma}[Parallel block cleanup]
+\begin{lemma}[Work and depth of block cleanup using $\Sweep$]
 \label{cor:parallel-contraction}
 For every cut satisfying \cref{eq:feasible-cut}, a height-$r$ subtree with no pebbles and arbitrary ghosts can be reduced to its $m$ boundary subtrees with $O(2^r)$ work, space at most $b$, and depth
 \begin{equation}
@@ -509,7 +509,7 @@ p(r)=\min\left\{2^r-1,\left\lceil\frac{16\cdot2^r}{r}\right\rceil\right\}.
 \end{equation}
 The routine $\Resolve$ uses this nondecreasing budget $p(r)=\Theta(2^r/r)$ to process equal-height jobs in batches, repeating on the smaller subtrees left by each stage.
 
-\begin{lemma}[Parallel cleanup of a forest]
+\begin{lemma}[Work and depth analysis of $\Resolve$]
 \label{lem:resolver}
 If $b\ge p(r)$, a procedure $\Resolve(A,r,b)$ clears $A$ disjoint height-$r$ subtrees containing ghosts but no pebbles, with space at most $b$, work $O(A2^r\lambda(r))$, and depth
 \begin{equation}
@@ -593,7 +593,7 @@ A non-output vertex's final removal must be an $\Unp$ action: a final $\Ghost$ w
 
 For a connected region $C$, let $\topv(C)$ be its vertex nearest the root. We partition $C$ into pieces of comparable size, then examine which contain pebbles after $\topv(C)$ is finally removed.
 
-\begin{lemma}[Partitioning a connected region]
+\begin{lemma}[Partition into connected pieces of comparable size]
 \label{lem:partition}
 A tree of maximum degree at most three and size $m>a\ge1$ can be partitioned into connected pieces with $a/4<|Q|\le a$.
 \end{lemma}
@@ -603,7 +603,7 @@ For a tree of size $m\ge4$, a centroid's largest adjacent component has size bet
 
 For a piece $Q$, its top must be pebbled when its parent $p$ is finally removed. We charge for providing that value between the final removals of $\topv(C)$ and $p$. A time boundary below means the configuration after a step or complete round. The relevant distinction is whether $Q$ contains a pebble, regardless of ghosts.
 
-\begin{lemma}[Regeneration charges]
+\begin{lemma}[Disjoint recomputation and storage charges]
 \label{lem:charging}
 Fix a successful strategy and a connected region that excludes the output. Recursively partition it into connected pieces. For a piece $Q$ of a region $C$, suppose $p=\parv(\topv(Q))$ lies strictly below $\topv(C)$, and define
 \begin{equation}
@@ -824,7 +824,7 @@ Every vertex is pebbled exactly once, either inside a bottom subtree or when com
 
 When $\Sweep$ is used to prepare a block boundary, completed roots remain live until every root is ready. The next lemma accounts for this retained space when dividing the budget among computations.
 
-\begin{lemma}
+\begin{lemma}[Work and depth of boundary preparation using $\Sweep$]
 \label{lem:frontier}
 Let $m\ge2$ disjoint height-$q$ subtrees have no pebbles and arbitrary ghosts. If $m+q\le b$ and $2m-1\le b$, their roots can all be prepared and retained with space at most $b$, work $O(m2^q)$, and depth $O(q+m2^q/b)$.
 \end{lemma}
