@@ -581,6 +581,9 @@ When $s=\Theta(n)$, a direct block schedule attains both $O(n)$ work and $O(h)$ 
 \section{Lower bounds}
 \label{sec:lower-bounds}
 
+\mingyu{start from here!}
+Starting from an empty configuration, the goal is to leave the root pebbled and every other vertex empty. This section proves lower bounds on work and parallel depth for full binary trees.
+
 Every vertex must be pebbled at least once, giving $\Pi\ge n$. Stronger bounds follow from cleanup: required child values must either remain available or be reconstructed. We charge this storage and recomputation to intervals determined by final uncomputations, ensuring that different parts of the argument do not count the same cost twice.
 
 \subsection{Regeneration intervals}
