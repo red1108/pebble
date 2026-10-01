@@ -17,6 +17,13 @@ changes and follow `../paper/EDITORIAL_GUIDE.md` for prose edits.
 
 ## Author's writing preferences
 
+- Write formal but engaging prose. Give the needed intuition and let the
+  argument develop before formalizing it. Avoid dry lists of assertions
+  and excessive compression. Brief conceptual sketches may clarify a new
+  mechanism without replacing the proof.
+- Introduce sections through their purpose and scope. Explain how the
+  supporting results lead to the construction, and close with what has
+  been established and its connection to the next part.
 - Follow the reader's knowledge and the problem, choice, and guarantee sequence.
   Define the objects and conventions needed before using them in an argument.
 - Remove repeated explanations while preserving logical links and smooth flow.
