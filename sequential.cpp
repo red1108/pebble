@@ -121,11 +121,11 @@ void release(int x) {
     else ghost(x);
 }
 
-// The user's KSS implementation, unchanged in its scheduling decisions.
-void fast_pebble(int x) {
+// SequentialPebble follows KSS's original dependency order.
+void sequential_pebble(int x) {
     auto place = [](int v) { pebble(v); };
     auto remove = [](int v) { release(v); };
-    pebbling::fast_pebble_traversal(x, n, place, remove);
+    pebbling::pebble_traversal(x, n, place, remove);
 }
 
 void cleanup_kss(int x) {
@@ -135,8 +135,8 @@ void cleanup_kss(int x) {
         return;
     }
     assert(is_ghost[x]);
-    fast_pebble(2*x);
-    fast_pebble(2*x+1);
+    sequential_pebble(2*x);
+    sequential_pebble(2*x+1);
     unpebble(x);
     release(2*x);
     release(2*x+1);
@@ -145,7 +145,7 @@ void cleanup_kss(int x) {
 }
 
 void kss_algorithm() {
-    fast_pebble(1);
+    sequential_pebble(1);
     if (n > 1) {
         cleanup_kss(2);
         cleanup_kss(3);
@@ -155,9 +155,9 @@ void kss_algorithm() {
 // Make the depth-k boundary roots, retain them, compute the top block, and
 // remove the top block while its inputs still exist. Only the global root
 // may be retained. On return, ghosts can remain only in boundary subtrees.
-void block(int x, int k, bool keep_root) {
+void uniform_contract(int x, int k, bool keep_root) {
     assert(k >= 1);
-    for (int v = x << k; v < (x+1) << k; v++) fast_pebble(v);
+    for (int v = x << k; v < (x+1) << k; v++) sequential_pebble(v);
 
     for (int d = k-1; d >= 0; d--)
         for (int v = x << d; v < (x+1) << d; v++) pebble(v);
@@ -185,9 +185,9 @@ void drain_subtree(int x) {
 }
 
 // Equal-depth sequential construction from the archived manuscript:
-// initial fast sweep, largest feasible cut, then full-tree terminal cleanup.
+// initial SequentialPebble call, largest feasible cut, then full-tree terminal cleanup.
 void level_control() {
-    fast_pebble(1);
+    sequential_pebble(1);
     if (h == 1) return;
     int r = h-1, B = space_limit-1;  // The global root stays live.
     vector<int> jobs = {2, 3};
@@ -200,7 +200,7 @@ void level_control() {
         require(k > 0, "no feasible paper cut");
         vector<int> next;
         for (int x : jobs) {
-            block(x, k, false);
+            uniform_contract(x, k, false);
             for (int v = x << k; v < (x+1) << k; v++) next.push_back(v);
         }
         jobs = std::move(next);
@@ -222,20 +222,20 @@ struct Plan {
 vector<Plan> clean_plan;
 Plan root_plan;
 
-int fast_peak(int r) { return r == 1 ? 1 : r+1; }
-uint64_t fast_work(int r) {
+int sequential_pebble_peak(int r) { return r == 1 ? 1 : r+1; }
+uint64_t sequential_pebble_work(int r) {
     return uint64_t(nodes(r)) + (r == 1 ? 0 : (1 << (r-1)));
 }
 
-int block_peak(int r, int k) {
+int uniform_contract_peak(int r, int k) {
     int m = 1 << k;
-    return max(m-1 + fast_peak(r-k), 2*m-1);
+    return max(m-1 + sequential_pebble_peak(r-k), 2*m-1);
 }
 
-uint64_t block_work(int r, int k, bool keep_root) {
+uint64_t uniform_contract_work(int r, int k, bool keep_root) {
     int m = 1 << k, q = r-k;
     // Boundary preparation + top P/U + supported removals of boundary leaves.
-    return m*fast_work(q) + 2*uint64_t(m-1) - (keep_root ? 1 : 0)
+    return m*sequential_pebble_work(q) + 2*uint64_t(m-1) - (keep_root ? 1 : 0)
            + (q == 1 ? m : 0);
 }
 
@@ -251,10 +251,10 @@ void make_uniform_plan() {
     for (int r = 2; r < h; r++) {
         for (int k = 1; k < r; k++) {
             int q = r-k, m = 1 << k;
-            if (block_peak(r, k) > B || clean_plan[q].cut < 0) continue;
+            if (uniform_contract_peak(r, k) > B || clean_plan[q].cut < 0) continue;
             consider(clean_plan[r], {
-                block_work(r, k, false) + m*clean_plan[q].work,
-                max(block_peak(r, k), clean_plan[q].peak), k});
+                uniform_contract_work(r, k, false) + m*clean_plan[q].work,
+                max(uniform_contract_peak(r, k), clean_plan[q].peak), k});
         }
     }
     root_plan = {};
@@ -264,10 +264,10 @@ void make_uniform_plan() {
     }
     for (int k = 1; k < h; k++) {
         int q = h-k, m = 1 << k;
-        if (block_peak(h, k) > space_limit || clean_plan[q].cut < 0) continue;
+        if (uniform_contract_peak(h, k) > space_limit || clean_plan[q].cut < 0) continue;
         consider(root_plan, {
-            block_work(h, k, true) + m*clean_plan[q].work,
-            max(block_peak(h, k), 1+clean_plan[q].peak), k});
+            uniform_contract_work(h, k, true) + m*clean_plan[q].work,
+            max(uniform_contract_peak(h, k), 1+clean_plan[q].peak), k});
     }
     require(root_plan.cut >= 0, "no feasible root plan");
 }
@@ -280,7 +280,7 @@ void cleanup_uniform(int x, int r) {
     }
     assert(is_ghost[x]);
     int k = clean_plan[r].cut;
-    block(x, k, false);
+    uniform_contract(x, k, false);
     for (int v = x << k; v < (x+1) << k; v++) cleanup_uniform(v, r-k);
 }
 
@@ -290,7 +290,7 @@ void uniform_control() {
         return;
     }
     int k = root_plan.cut;
-    block(1, k, true);  // Clear the top block already during first evaluation.
+    uniform_contract(1, k, true);  // Clear the top block already during first evaluation.
     for (int v = 1 << k; v < 2 << k; v++) cleanup_uniform(v, h-k);
 }
 
@@ -307,7 +307,7 @@ Shape shape(int r, int m) {
     return {r-k, (1 << (k+1))-m, 2*(m-(1 << k))};
 }
 
-int mixed_peak(int r, int m) {
+int contract_peak(int r, int m) {
     int ceil_log = 0;
     while ((1 << ceil_log) < m) ceil_log++;
     return max(2*m-1, r+m-ceil_log);
@@ -319,7 +319,7 @@ int choose_boundary_size(int r, int B) {
     int lo = 2, hi = min(1 << (r-1), (B+1)/2), answer = 0;
     while (lo <= hi) {
         int mid = lo+(hi-lo)/2;
-        if (mixed_peak(r, mid) <= B) {
+        if (contract_peak(r, mid) <= B) {
             answer = mid;
             lo = mid+1;
         } else hi = mid-1;
@@ -336,10 +336,10 @@ Plan mixed_root_plan;
 Plan mixed_cost(int r, int m, bool keep, const vector<Plan>& clean) {
     auto [q, a, b] = shape(r, m);
     uint64_t work = 2*uint64_t(m-1) - (keep ? 1 : 0);
-    int peak = mixed_peak(r, m);
+    int peak = contract_peak(r, m);
     for (auto [count, height] : {pair<int, int>{a, q}, {b, q-1}}) {
         if (!count) continue;
-        work += count*(fast_work(height) + (height == 1 ? 1 : 0)
+        work += count*(sequential_pebble_work(height) + (height == 1 ? 1 : 0)
                        + clean[height].work);
         peak = max(peak, int(keep)+clean[height].peak);
     }
@@ -358,20 +358,20 @@ void make_mixed_plan() {
 
 struct BoundaryJob { int x, height; };
 
-void collect_boundary(int x, int r, int m, vector<BoundaryJob>& boundary,
+void build_boundary(int x, int r, int m, vector<BoundaryJob>& boundary,
                       vector<int>& top) {
     if (m == 1) {
         boundary.push_back({x, r});
         return;
     }
-    collect_boundary(2*x, r-1, (m+1)/2, boundary, top);
-    collect_boundary(2*x+1, r-1, m/2, boundary, top);
+    build_boundary(2*x, r-1, (m+1)/2, boundary, top);
+    build_boundary(2*x+1, r-1, m/2, boundary, top);
     top.push_back(x);  // Children before parent.
 }
 
 // The same routine computes the output root and cleans ghost-only subtrees.
 // Its schedule is: widest feasible boundary, top block, smaller cleanup jobs.
-void our_algorithm(int x, int r, bool keep_root) {
+void fast_clean(int x, int r, bool keep_root) {
     assert(!placed[x]);
     if (r == 1) {
         if (keep_root) pebble(x);
@@ -383,17 +383,17 @@ void our_algorithm(int x, int r, bool keep_root) {
     int m = choose_boundary_size(r, B);
     vector<BoundaryJob> boundary;
     vector<int> top;
-    collect_boundary(x, r, m, boundary, top);
+    build_boundary(x, r, m, boundary, top);
     // Boundary jobs have at most two heights; keep left-to-right order within each.
     int tall_height = shape(r, m).q;
     stable_partition(boundary.begin(), boundary.end(),
                      [tall_height](const BoundaryJob& j) { return j.height == tall_height; });
-    for (BoundaryJob j : boundary) fast_pebble(j.x);
+    for (BoundaryJob j : boundary) sequential_pebble(j.x);
     for (int v : top) pebble(v);
     for (auto it = top.rbegin(); it != top.rend(); ++it)
         if (!keep_root || *it != x) unpebble(*it);
     for (BoundaryJob j : boundary) release(j.x);
-    for (BoundaryJob j : boundary) our_algorithm(j.x, j.height, false);
+    for (BoundaryJob j : boundary) fast_clean(j.x, j.height, false);
 }
 
 enum Algorithm { KSS, CONTROL_LEVEL, CONTROL_UNIFORM, BLOCK };
@@ -419,7 +419,7 @@ Metrics run(Algorithm algorithm, int height, int cap) {
                 "planned/replayed work or peak disagree");
     } else {
         make_mixed_plan();  // Classical bookkeeping is not quantum work.
-        our_algorithm(1, h, true);
+        fast_clean(1, h, true);
         require(metrics.work() == mixed_root_plan.work &&
                 metrics.peak == mixed_root_plan.peak,
                 "mixed boundary prediction/replay disagree");
@@ -476,7 +476,7 @@ uint64_t check_greedy_choices(int height, int cap) {
         bool keep = r == height;
         int B = keep ? cap : cap-1;
         for (int m = 2; m <= min(1 << (r-1), (B+1)/2); m++) {
-            if (mixed_peak(r, m) <= B)
+            if (contract_peak(r, m) <= B)
                 consider(optimal[r], mixed_cost(r, m, keep, optimal));
         }
         Plan greedy = mixed_cost(r, choose_boundary_size(r, B), keep, optimal);
