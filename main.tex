@@ -474,7 +474,7 @@ For the initial root computation and boundary preparation, we use $\Sweep$, a pa
 
 \begin{lemma}[Depth analysis of $\Sweep$]
 \label{lem:sweep}
-For a complete subtree $T$ of height $q$ and space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
+For a complete subtree $T$ of height $q$ and any space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
 \begin{equation}
 O\!\left(q+\frac{2^q}{b}\right).
 \label{eq:sweep}
@@ -904,11 +904,10 @@ For the output-producing call, the current block has budget $s$ and its descenda
 \section{Parallel root computation}
 \label{app:sweep}
 
-We prove \cref{lem:sweep} by computing small subtrees near the leaves and combining their roots as they become available. Space is used both by unfinished computations and by completed roots waiting to be combined. With enough space, several bottom subtrees can advance together. Near the minimum budget, we process them one at a time and account for the space released whenever completed roots are combined.
+In this section, we prove \cref{lem:sweep} for every $b\ge q+1$. We compute small subtrees near the leaves and combine their roots as they become available. Space is used both by unfinished computations and by completed roots waiting to be combined. With enough space, several bottom subtrees can advance together. Near the minimum budget, we process them one at a time and account for the space released whenever completed roots are combined.
 
+\begin{proof}[Proof of \cref{lem:sweep}]
 There are two base cases. If the entire height-$q$ subtree fits in $b$, compute it levelwise, ghosting each non-root level after use. If $b<16$, follow the depth-first order of $\Fast$ on that subtree, replacing every removal by ghosting. This uses at most $q+1$ pebbles and $O(2^q)=O(2^q/b)$ rounds because $b$ is bounded. We may therefore assume $16\le b<2^q-1$.
-
-\subsection{Space at least twice the height}
 
 Suppose $b\ge2q$. Choose the largest power of two $p\le b/8$, and write $p=2^{\ell-1}$, $d=q-\ell$, and $R=2^d$. The bottom $\ell$ levels form $R$ disjoint subtrees, each with $p$ leaves. In each round devoted to these subtrees, advance every unfinished subtree by one level. Ghost its previous level after the new one has been computed. Start a new subtree in every second such round.
 
@@ -925,9 +924,7 @@ A completed root leaves the unfinished-job accounting. The stack of retained roo
 \]
 Advancing all $R$ bottom subtrees takes $2R+O(\ell)$ rounds, including time for the last jobs to finish. Combining their roots takes $R-1$ additional rounds. Since $p=\Theta(b)$ and $R=2^{q-\ell}$, the total depth is $O(q+2^q/b)$.
 
-\subsection{Space close to the height}
-
-Suppose $q+1\le b<2q$. Set $\ell=\lfloor q/4\rfloor$, $d=q-\ell$, and $R=2^d$. Process the bottom height-$\ell$ subtrees from left to right, combining each completed root with the retained stack as above. Number the bottom subtrees $j=0,\ldots,R-1$. Before starting subtree $j$, the stack has $\popcount(j)$ roots, leaving a local budget
+It remains to consider $q+1\le b<2q$. Set $\ell=\lfloor q/4\rfloor$, $d=q-\ell$, and $R=2^d$. Process the bottom height-$\ell$ subtrees from left to right, combining each completed root with the retained stack as above. Number the bottom subtrees $j=0,\ldots,R-1$. Before starting subtree $j$, the stack has $\popcount(j)$ roots, leaving a local budget
 \[
 b_j=b-\popcount(j)\ge b-d\ge\ell+1.
 \]
@@ -946,6 +943,7 @@ O\!\left(R\ell+\frac{2^q}{b}+H2^\ell+R\right)=O(2^q/b).
 To see the last equality, divide the extra terms by $2^q/b$. They are bounded by constant multiples of $b\ell/2^\ell$ and $b2^{-(1-\eta)d}$, which are uniformly bounded because $b,\ell,d=\Theta(q)$. Thus the occasional depth-first jobs do not change the asymptotic bound.
 
 Every vertex is pebbled exactly once, either inside a bottom subtree or when combining two completed roots. Simultaneous actions operate in disjoint bottom subtrees, and root combinations run separately. All non-root values are ghosted after use. This proves the work, space, state, and depth claims of \cref{lem:sweep}.
+\end{proof}
 
 \subsection{Preparing the boundary of a block}
 
