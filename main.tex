@@ -581,19 +581,19 @@ At $s=\Theta(n)$, this extra work can be avoided by a direct block schedule. A f
 
 We have combined $\Sweep$, block cleanup, and $\Resolve$ into a complete parallel pebbling algorithm and established work and depth bounds for every feasible space budget. The next section proves that this algorithm achieves asymptotically optimal depth.
 
-\section{Lower bounds}
+\section{Work lower bounds and optimality}
 \label{sec:lower-bounds}
 
 
 
-In this section, we prove lower bounds on work and parallel depth to establish the optimality claims in \cref{thm:main}. These bounds apply to every full binary tree $T$, including unbalanced trees, and match our upper bounds for $B_h$. The work bounds hold in both execution models, while the depth bound accounts for the actual height $H(T)$.
+In this section, we establish work optimality for $B_h$ through a lower bound valid for every full binary tree, including unbalanced trees. We count the recomputation forced by the space budget in a sequential strategy and extend the result to the parallel model by serialization.
 
-Every vertex must be pebbled at least once, so $\Pi\ge n$. Stronger bounds follow from cleanup: child values must be retained or reconstructed before their parent can be uncomputed. We charge these storage and recomputation costs to intervals defined by final uncomputations, ensuring that no cost is counted twice.
+Every vertex must be pebbled at least once, so $\Pi\ge n$. Stronger bounds follow from cleanup, when released child values must be reconstructed for uncomputation. We use final uncomputations to identify disjoint intervals in which this recomputation is unavoidable.
 
 
 \subsection{Recomputation intervals}
 
-Consider what happens to a vertex during the computation. Its value may be computed, used, and discarded, then computed again when it is needed later. The root's final pebble gives the output we retain. Every other vertex must eventually end empty.
+In this section, we follow a vertex through the computation to define intervals for counting recomputation and storage. Its value may be computed, used, and discarded, then computed again when it is needed later. The root's final pebble gives the output we retain. Every other vertex must eventually end empty.
 
 Now consider the last action of a non-root vertex. It cannot be a $\Ghost$ action, because clearing the resulting ghost would require the vertex to be pebbled and removed again. The final removal must therefore be an $\Unp$ action. Write $\tau(v)$ for the step of this final removal in a sequential strategy, or its round in a parallel strategy. A parent must have both children pebbled when it is uncomputed, so their final uncomputations occur later. In parallel execution, overlapping active sets also prohibit these actions from sharing a round. Hence, for every non-root $v$ and its descendant $u$,
 
@@ -732,15 +732,13 @@ require at least $3m/4$ later placements within their intervals.
 
 Repeat the partition inside every piece, including those set
 aside from the count at the current stage. The charges remain
-disjoint by \cref{lem:charging}. By \cref{eq:work-partition},
-a piece's size decreases by at most a factor $32(s+1)$ at each
-partition. Consequently each vertex of the initial subtree
-belongs to $\Omega(\log n/\log(s+1))$ subtrees that are split
-further. Summing their sizes over the partition levels counts
-each such vertex that many times. Each of these subtrees
-forces placements totaling a constant fraction of its size.
-Since the initial subtree has $\Omega(n)$ vertices, summing
-these charges proves the bound.
+disjoint by \cref{lem:charging}. The size bound in
+\cref{eq:work-partition} limits each shrinkage factor to $32(s+1)$,
+so every initial vertex belongs to
+$\Omega(\log n/\log(s+1))$ subtrees that are split further.
+Each such subtree forces placements proportional to its size.
+Summing these sizes counts each of the $\Omega(n)$ initial
+vertices that many times and proves the bound.
 \end{proof}
 
 The serialization in \cref{sec:work-counts} preserves placements
@@ -748,8 +746,18 @@ and space. Therefore the same placement lower bound holds for
 parallel strategies. Since $W\ge\Pi$, it is also a work lower
 bound in either execution model.
 
-\subsection{Storage and depth}
+For $B_h$, $\log n=\Theta(h)$, so this matches \cref{thm:seq-upper} and establishes optimal work in both models. We next use the same intervals to bound storage and parallel depth.
+
+\section{Parallel depth and its work cost}
+\label{sec:parallel-lower}
+
+In this section, we prove a parallel depth lower bound for every full binary tree and establish depth optimality for $B_h$. We then show that attaining this depth can force additional work.
+
+\subsection{Storage and depth lower bounds}
 \label{sec:area}
+\label{sec:tree-shape}
+
+In this section, we use the intervals from \cref{lem:charging} to bound cumulative storage and derive the parallel depth lower bound.
 
 Dependencies require at least $H(T)$ rounds to reach the root.
 Each placement contributes to the occupied registers of its
@@ -792,19 +800,23 @@ bound and \cref{thm:universal-work} gives
 D=\Omega\!\left(H(T)+\frac ns\max\!\left\{\frac{\log n}{\log(s+1)},\lambda(n)\right\}\right).
 \label{eq:universal-depth}
 \end{equation}
-For a complete tree, $\log n=\Theta(h)$ and
-$\lambda(n)=\Theta(\lambda(h))$. These work and depth lower
-bounds match \cref{thm:seq-upper,thm:parallel-upper}, proving
-\cref{thm:main}. Keeping the two terms separate in
-\cref{eq:weighted} will also let us bound the work of a
-depth-optimal strategy.
+For $B_h$, $\log n=\Theta(h)$ and
+$\lambda(n)=\Theta(\lambda(h))$, so \cref{eq:universal-depth}
+matches \cref{thm:parallel-upper}. Together with work optimality
+from \cref{thm:universal-work,thm:seq-upper}, this proves \cref{thm:main}.
 
-\section{Work, depth, and tree shape}
+For associative operations, choosing the evaluation tree amounts to parenthesizing the same ordered inputs. The universal bounds let us compare these choices at a common space budget.
+
+\begin{proof}[Proof of \cref{thm:main-shape}]
+Every ordered full binary tree with $N=2^{h-1}$ leaves has $n=2N-1$ vertices and height at least $1+\log N=h$. Apply \cref{thm:universal-work,eq:universal-depth}. At every budget in the statement, the complete tree is feasible and attains both lower-bound orders by \cref{thm:main}.
+\end{proof}
+
+Keeping the two terms separate in \cref{eq:weighted} will also let us bound the work of a depth-optimal strategy.
 
 \subsection{Work needed for optimal depth}
 \label{sec:separation}
 
-We have determined the minimum work and the minimum depth at each space budget. They need not be attained by the same strategy. At $s=\Theta(n/h)$, \cref{eq:main-work,eq:main-depth} give
+In this section, we show that attaining optimal parallel depth can require asymptotically more work than minimizing work alone. At $s=\Theta(n/h)$, \cref{eq:main-work,eq:main-depth} give
 \[
 \Wpar^\star(B_h,s)=\Theta(n), \qquad \Dpar^\star(B_h,s)=\Theta(h\lambda(h)).
 \]
@@ -821,15 +833,6 @@ For the construction, $s=\Theta(n/h)$ gives $\log(s+1)=\Theta(h)$. Substitution 
 \end{proof}
 
 For budgets with $h/\log(s+1)=\Omega(\lambda(h))$, the additional $n\lambda(h)$ term in the parallel construction is absorbed by $nh/\log(s+1)$. Its work then matches \cref{eq:main-work}, while its depth remains optimal. This includes the minimum budget $s=h+1$.
-
-\subsection{Choosing the evaluation tree}
-\label{sec:tree-shape}
-
-For associative operations, choosing the evaluation tree amounts to parenthesizing the same ordered inputs. The universal bounds let us compare these choices at a common space budget.
-
-\begin{proof}[Proof of \cref{thm:main-shape}]
-Every ordered full binary tree with $N=2^{h-1}$ leaves has $n=2N-1$ vertices and height at least $1+\log N=h$. Apply \cref{thm:universal-work,eq:universal-depth}. At every budget in the statement, the complete tree is feasible and attains both lower-bound orders by \cref{thm:main}.
-\end{proof}
 
 \section{Application to RNS point-addition trees}
 \label{sec:cfs-case-study}
