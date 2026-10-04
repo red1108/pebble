@@ -397,7 +397,37 @@ For an equal-depth boundary with $b$ registers allocated to the current block, t
 
 We now combine one-block cleanup into a recursive algorithm and bound its total work. The matching lower bound is proved in \cref{sec:lower-bounds}.
 
-At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, we find this value by binary search. Within the balanced recursive scheme using $\Fast$, making this choice at every call minimizes total work, including cleanup of the boundary subtrees, as shown in \cref{prop:greedy-boundary}.
+At a height-$r$ cleanup call with budget $b$, choose the largest $m$ satisfying $S(r,m)\le b$. Since $S(r,m)$ is nondecreasing in $m$, we find this value by binary search. The following proposition justifies this rule within the balanced recursive scheme using $\Fast$.
+
+\begin{proposition}[Boundary choice for $\Clean$]
+\label{prop:greedy-boundary}
+For complete trees with unit action costs, the largest feasible boundary minimizes work among the balanced recursive contractions defined in \cref{sec:block-cleanup}, using $\Fast$ at a fixed cleanup budget $b$. The same rule applies to the output-producing block with budget $s$ and cleanup budget $s-1$.
+\end{proposition}
+\begin{proof}
+Let $C_r$ be the minimum cleanup work in this family at budget $b$,
+starting with internal ghosts and empty leaves, so $C_1=0$.
+Restrict a strategy to either child subtree, still within budget $b$.
+It either performs block cleanup there directly or first computes and
+releases that child's root.
+In both cases the child contributes at least $C_{r-1}$.
+The parent is also pebbled and unpebbled, giving
+\[
+ C_r\ge2C_{r-1}+2.
+\]
+
+Expanding a shallowest boundary vertex of height $q\ge2$ into its
+children adds one unit to the current block's work by \cref{eq:block-work},
+but replaces the later cost $C_q$ by $2C_{q-1}$.
+The total change is
+\[
+1+2C_{q-1}-C_q\le-1.
+\]
+Since \cref{alg:boundary} obtains successive sizes by these expansions
+and $S(r,m)$ is nondecreasing, every expansion up to the largest feasible
+boundary reduces total work. For the output block, use the descendant
+budget $b=s-1$ in $C_q$. Retaining the root saves one unpebbling for every
+boundary choice and leaves the comparison unchanged.
+\end{proof}
 
 The procedure $\Clean$ combines one-block cleanup with recursive calls on the boundary subtrees. Its initial call is $\Clean(B_h,s,1)$, with $\rho=1$ to retain the root.
 
@@ -483,8 +513,62 @@ O\!\left(q+\frac{2^q}{b}\right).
 Starting from $P\cap V(T)=\varnothing$ and arbitrary $G$, each vertex is pebbled once. Every non-root vertex is ghosted after use.
 
 \end{lemma}
+\begin{proof}
+A leaf needs one round and one register. If $2^q-1\le b$, compute
+levelwise and ghost each level after use. If $b<16$, follow the
+depth-first order of $\Fast$, replacing removals by ghosting.
+This uses at most $q+1$ registers and $O(2^q)=O(2^q/b)$ rounds.
+Hence assume $16\le b<2^q-1$.
 
-The construction is given in \cref{app:sweep}. A single leaf needs one round and one register.
+For $b\ge2q$, choose the largest power of two $p\le b/8$ and put
+$p=2^{\ell-1}$, $d=q-\ell$, and $R=2^d$.
+Compute the $R$ bottom height-$\ell$ subtrees levelwise, starting
+one every second advancement round and ghosting its previous level.
+After $a\ge1$ advances, a job's old and new levels use $3p/2^a$
+registers during the round. The unfinished jobs therefore occupy at most
+\[
+p+\frac{3p}{4}+\frac{3p}{16}+\cdots\le2p, \qquad \frac{3p}{2}+\frac{3p}{8}+\cdots=2p.
+\]
+Combine adjacent equal-height roots by pebbling their parent and
+ghosting both children, as in a binary counter's carries. Pause the
+unfinished jobs during these rounds. The retained roots represent the
+power-of-two blocks of the completed prefix. Before the last completion,
+there are $\popcount(j)\le d$ such roots after $j$ completions.
+Including an incoming root and temporary parent, the total space is at most
+\[
+2p+d+2\le b/4+q+2\le b.
+\]
+There are $2R+O(\ell)$ advancement rounds and $R-1$ combinations.
+Since $p=\Theta(b)$, the depth is $O(q+2^q/b)$.
+
+For $q+1\le b<2q$, put $\ell=\lfloor q/4\rfloor$,
+$d=q-\ell$, and $R=2^d$. Process the bottom subtrees one at a time,
+using the same binary carries. Before job $j=0,\ldots,R-1$, the retained
+stack has $\popcount(j)$ roots, leaving local budget
+\[
+b_j=b-\popcount(j)\ge b-d\ge\ell+1.
+\]
+Use the preceding construction, including its base cases, when
+$b_j\ge2\ell$, and the ghosting depth-first order otherwise.
+The combinations fit in $d+2\le q+1$ registers. If $H$ jobs require depth-first order, then
+$\popcount(j)>b-2\ell\ge2d/3$, so
+\[
+H\le2^{-2d/3}\sum_{i=0}^d\binom di2^i=2^{\eta d}, \qquad \eta=\log3-\frac23<1.
+\]
+The other jobs have $b_j=\Omega(b)$ and take $O(\ell+2^\ell/b)$
+rounds each, while a depth-first job takes $O(2^\ell)$ rounds.
+Summing these depths and the root combinations gives
+\[
+O\!\left(R\ell+\frac{2^q}{b}+H2^\ell+R\right)=O(2^q/b).
+\]
+Indeed, relative to $2^q/b$, the extra terms are bounded by
+$b\ell/2^\ell$ and $b2^{-(1-\eta)d}$, which are uniformly bounded
+because $b,\ell,d=\Theta(q)$.
+
+Every vertex is pebbled once and every non-root value is ghosted
+after use. Simultaneous actions lie in disjoint bottom subtrees,
+and root combinations run separately.
+\end{proof}
 
 For parallel block cleanup, choose a cut of depth $k$, giving $m=2^k$ boundary subtrees of height $q=r-k$. We prepare it with $\Sweep$ and process the top block levelwise, since vertices on a common level have disjoint active sets. The same feasibility conditions in \cref{eq:feasible-cut} apply.
 
@@ -498,9 +582,27 @@ O\!\left(r+\frac{2^r}{b}\right).
 The block finishes with no pebbles, and all remaining ghosts lie in the boundary subtrees.
 \end{lemma}
 \begin{proof}
-By \cref{lem:frontier}, preparing and retaining the boundary with $\Sweep$ takes $O(q+m2^q/b)$ rounds and $O(m2^q)$ work within budget $b$.
+First prepare the $m$ boundary roots with $\Sweep$.
+If $m(q+1)\le b$, give each job $\lfloor b/m\rfloor$ registers
+and run them concurrently. By \cref{lem:sweep}, this takes
+$O(q+m2^q/b)$ rounds.
 
-With the boundary present, the $k$ levels above it take $k$ rounds to pebble and $k$ rounds to unpebble, using $2(m-1)$ work. Apply $\Release$ to the boundary roots in one further round, adding at most $m$ work. Both phases fit by \cref{eq:feasible-cut}, and substituting $q+k=r$ and $m2^q=2^r$ gives the stated bounds.
+Otherwise reserve $m-1$ registers for completed roots and give each
+active job $q+1$ registers. The cut conditions imply
+$b-m+1\ge\max\{(b+1)/2,q+1\}$, so a batch can contain
+\[
+a=\left\lfloor\frac{b-m+1}{q+1}\right\rfloor\ge\frac{b}{4(q+1)}
+\]
+jobs. Each batch takes $O(q+2^q/(q+1))$ rounds by \cref{lem:sweep}
+and uses at most $m-1+a(q+1)\le b$ registers. The $O(m(q+1)/b)$
+batches therefore take $O(m2^q/b)$ rounds, since $q(q+1)=O(2^q)$.
+Both preparations use $O(m2^q)$ work within budget $b$, retaining all
+boundary roots.
+
+The $k$ levels above the boundary take $k$ rounds to pebble and
+$k$ rounds to unpebble, using $2(m-1)$ work and at most $2m-1\le b$
+registers. Release the boundary in one further round, adding at most
+$m$ work. Substituting $q+k=r$ and $m2^q=2^r$ gives the bounds.
 \end{proof}
 
 To process smaller subtrees together, give each height-$r$ job enough space for one block to take $O(r)$ rounds. By \cref{eq:parallel-contraction}, a local budget of order $2^r/r$ suffices. We use
@@ -772,22 +874,10 @@ round, and each round occupies at most $s$ registers. Thus
 \Pi\le\Area\le sD.
 \label{eq:capacity}
 \end{equation}
-The work lower bound already gives $D\ge\Pi/s$. To obtain a
-stronger depth bound, we also count the storage needed when
-pieces retain pebbles between final uncomputations.
-
-Set $L=\lambda(n)$. In a subtree $C$ with $m$ vertices, we use
-pieces of size $\Theta(\log m/L)$. A constant fraction of $C$
-lies in pieces whose roots' parents are $\Omega(\log m)$ levels
-below $\operatorname{root}(C)$. By \cref{eq:final-removal},
-their intervals have length at least $L$ times the piece size,
-with constants chosen as in \cref{app:storage}. Each such piece
-either requires recomputation or contributes at least one
-occupied vertex--round pair in every round of its interval.
-In both cases it contributes at
-least its size to $\Pi+\Area/L$. The logarithmic reduction in
-piece size permits $\Omega(L)$ partition levels. The appendix
-proves this count and the resulting bound.
+The work lower bound already gives $D\ge\Pi/s$. For a stronger
+bound, we also charge the storage of pebbles retained between final
+uncomputations. The following theorem keeps recomputation and storage
+separate so that we can later bound the work needed for optimal depth.
 
 \begin{theorem}[Storage and recomputation]
 \label{thm:weighted}
@@ -797,6 +887,44 @@ There is an absolute constant $c>0$ such that every parallel strategy on a full 
 \label{eq:weighted}
 \end{equation}
 \end{theorem}
+\begin{proof}
+Set $L=1+\log^*n$. For bounded $L$, $\Pi\ge n$ suffices after
+adjusting the absolute constant. Otherwise start with the larger child
+subtree of $r$, of size $m_0\ge(n-1)/2$, and partition every piece
+larger than $M_L=2^{L^2}$.
+For a subtree $C$ of size $m>M_L$, choose
+\[
+a=\left\lfloor\frac{\log m}{16L}\right\rfloor, \qquad \ell=\left\lfloor\frac12\log m\right\rfloor.
+\]
+By \cref{lem:partition}, its pieces satisfy $a/4<|Q|\le a$.
+Pieces rooted fewer than $\ell$ edges below $\operatorname{root}(C)$
+cover at most $a2^\ell\le a\sqrt m\le m/4$ vertices.
+Thus the remaining pieces cover at least $3m/4$ vertices.
+
+For each remaining $Q$, its root's parent $p$ is at least $\ell-1$
+edges below $\operatorname{root}(C)$. By \cref{eq:final-removal},
+\[
+ |I(C,Q)|\ge\ell-1\ge La\ge L|Q|.
+\]
+The interval therefore forces either $|Q|$ placements or
+$L|Q|$ occupied vertex--round pairs by \cref{lem:charging}.
+In either case $Q$ contributes at least $|Q|$ to $\Pi+\Area/L$,
+so $C$ contributes at least $3|C|/4$.
+
+For sufficiently large $L$ and $m>M_L$,
+\[
+|Q|>a/4\ge\frac{\log m}{128L}\ge\log\log m.
+\]
+The last inequality follows from monotonicity of $x/\log x$
+for $x=\log m>L^2$ and $L/\log L\to\infty$.
+Thus each partition decreases $\log^*|C|$ by at most two.
+It starts at $\log^*m_0=L-O(1)$ and ends at
+$\log^*M_L=O(1+\log^*L)=o(L)$, so every initial vertex belongs
+to $\Omega(L)$ subtrees that are split further.
+Their charges are disjoint by \cref{lem:charging}.
+Summing their sizes counts the $\Omega(n)$ initial vertices
+$\Omega(L)$ times, giving $\Pi+\Area/L=\Omega(nL)$.
+\end{proof}
 
 Because $\Pi\le\Area$, the theorem implies
 $\Area=\Omega(n\lambda(n))$, and hence
@@ -882,170 +1010,7 @@ P-256 & 19 & 499979 & 11,640,184 & 9,007,225 & 22.62\% & 1303 / 1325 \\
 
 For P-256 at prime $521177$, leaf computations fall from 82 to 57 and internal-node computations from 46 to 35. Both schedules use ten direct phase corrections, seven internal-node inverse circuits, and one root operation. The saved work therefore comes from fewer recomputations. \Cref{app:application} gives the circuit contract, space calculation, and validation details.
 
-\section{Discussion}
-
-Determining all achievable work--depth pairs at a fixed space budget remains open, beyond the separate optima and the separation in \cref{sec:separation}. The lower-bound argument uses the fact that each intermediate value has one parent, so shared values in a DAG require a different analysis. Circuit applications also require accounting for unequal value widths and scratch space, as the point-addition comparison illustrates.
-
-\appendix
-
-\section{Boundary selection}
-\label{app:sequential}
-
-Increasing the boundary size raises the one-block work $K(r,m)$ by one for each added vertex. Its benefit comes from the smaller subtrees left for recursive cleanup. We compare these two effects to justify choosing the largest feasible boundary.
-
-\begin{proposition}
-\label{prop:greedy-boundary}
-For complete trees with unit action costs, the largest feasible boundary minimizes work among the balanced recursive contractions defined in \cref{sec:block-cleanup}, using $\Fast$ at a fixed cleanup budget $b$. The same rule applies to the output-producing block with budget $s$ and cleanup budget $s-1$.
-\end{proposition}
-\begin{proof}
-Let $C_r$ be the minimum cleanup work in this family for a height-$r$ subtree whose internal vertices are ghosts and whose leaves are empty. In particular, $C_1=0$. Restrict any such strategy to either child subtree. If its boundary contains at least two vertices there, the restriction is a balanced block cleanup, followed by recursive calls, within space $b$. If the child root itself is a boundary vertex, the strategy computes it with $\Fast$, releases it, and then performs recursive cleanup from the same internal-ghost state. In either case the child subtree contributes at least $C_{r-1}$. The parent is also pebbled and unpebbled, so
-\[
- C_r\ge2C_{r-1}+2.
-\]
-
-Now expand a shallowest boundary vertex of subtree height $q\ge2$ into its two children. By \cref{eq:block-work}, the work of the current block increases by one. The later cleanup cost changes from $C_q$ to $2C_{q-1}$. The total change is therefore
-\[
-1+2C_{q-1}-C_q\le-1.
-\]
-The recursive construction in \cref{alg:boundary} obtains each next boundary size by such a shallowest expansion. Since $S(r,m)$ is nondecreasing in $m$, every expansion up to the largest feasible size is allowed and reduces total work. Applying this argument recursively proves the rule.
-
-For the output-producing call, the current block has budget $s$ and its descendants have budget $s-1$. Use the cleanup costs $C_q$ for that latter budget in the same comparison. Retaining the root omits one unpebbling for every choice of boundary, so it does not change which choice minimizes work.
-\end{proof}
-
-\section{Parallel root computation}
-\label{app:sweep}
-
-In this section, we prove \cref{lem:sweep} for every $b\ge q+1$. We compute small subtrees near the leaves and combine their roots as they become available. Space is used both by unfinished computations and by completed roots waiting to be combined. With enough space, several bottom subtrees can advance together. Near the minimum budget, we process them one at a time and account for the space released whenever completed roots are combined.
-
-\begin{proof}[Proof of \cref{lem:sweep}]
-There are two base cases. If the entire height-$q$ subtree fits in $b$, compute it levelwise, ghosting each non-root level after use. If $b<16$, follow the depth-first order of $\Fast$ on that subtree, replacing every removal by ghosting. This uses at most $q+1$ pebbles and $O(2^q)=O(2^q/b)$ rounds because $b$ is bounded. We may therefore assume $16\le b<2^q-1$.
-
-Suppose $b\ge2q$. Choose the largest power of two $p\le b/8$, and write $p=2^{\ell-1}$, $d=q-\ell$, and $R=2^d$. The bottom $\ell$ levels form $R$ disjoint subtrees, each with $p$ leaves. In each round devoted to these subtrees, advance every unfinished subtree by one level. Ghost its previous level after the new one has been computed. Start a new subtree in every second such round.
-
-A newly started subtree needs $p$ pebbles. After $a\ge1$ advances, its old and new levels together occupy $3p/2^a$ registers during the round. Since jobs start two rounds apart, the total transient space of the unfinished jobs is bounded by one of the sums
-\[
-p+\frac{3p}{4}+\frac{3p}{16}+\cdots\le2p, \qquad \frac{3p}{2}+\frac{3p}{8}+\cdots=2p.
-\]
-
-We combine completed roots using the carries of a binary counter. After the first $j$ bottom subtrees have finished, the retained roots represent the maximal power-of-two blocks in that prefix. There are $\popcount(j)\le d$ such roots before the last completion. When a new root arrives, combine any two adjacent equal-sized blocks by pebbling their parent and ghosting both children. Repeat until no further combination is possible, then resume the unfinished bottom computations. These combinations are performed in separate rounds.
-
-A completed root leaves the unfinished-job accounting. The stack of retained roots, the incoming root, and the temporary parent need at most $d+2$ further registers. Total space is therefore at most
-\[
-2p+d+2\le b/4+q+2\le b.
-\]
-Advancing all $R$ bottom subtrees takes $2R+O(\ell)$ rounds, including time for the last jobs to finish. Combining their roots takes $R-1$ additional rounds. Since $p=\Theta(b)$ and $R=2^{q-\ell}$, the total depth is $O(q+2^q/b)$.
-
-It remains to consider $q+1\le b<2q$. Set $\ell=\lfloor q/4\rfloor$, $d=q-\ell$, and $R=2^d$. Process the bottom height-$\ell$ subtrees from left to right, combining each completed root with the retained stack as above. Number the bottom subtrees $j=0,\ldots,R-1$. Before starting subtree $j$, the stack has $\popcount(j)$ roots, leaving a local budget
-\[
-b_j=b-\popcount(j)\ge b-d\ge\ell+1.
-\]
-Thus every bottom job is feasible. If $b_j\ge2\ell$, use the preceding large-budget construction on that job, with the full-fit and bounded-budget base cases applied when appropriate. Otherwise use the ghosting depth-first order. The root combinations also fit, since they require at most $d+2\le q+1$ registers.
-
-The first group of jobs has $b_j\ge2\ell=\Omega(b)$, so each takes $O(\ell+2^\ell/b)$ rounds. The depth-first jobs take $O(2^\ell)$ rounds each, but there are relatively few of them: they occur only when many stack entries are occupied. If $H$ denotes their number, they require
-$\popcount(j)>b-2\ell\ge2d/3$. As $j$ ranges over all $d$-bit integers,
-\[
-H\le2^{-2d/3}\sum_{i=0}^d\binom di2^i=2^{\eta d}, \qquad \eta=\log3-\frac23<1.
-\]
-
-Summing the job depths and the $R-1$ root-combination rounds gives
-\[
-O\!\left(R\ell+\frac{2^q}{b}+H2^\ell+R\right)=O(2^q/b).
-\]
-To see the last equality, divide the extra terms by $2^q/b$. They are bounded by constant multiples of $b\ell/2^\ell$ and $b2^{-(1-\eta)d}$, which are uniformly bounded because $b,\ell,d=\Theta(q)$. Thus the occasional depth-first jobs do not change the asymptotic bound.
-
-Every vertex is pebbled exactly once, either inside a bottom subtree or when combining two completed roots. Simultaneous actions operate in disjoint bottom subtrees, and root combinations run separately. All non-root values are ghosted after use. This proves the work, space, state, and depth claims of \cref{lem:sweep}.
-\end{proof}
-
-\subsection{Preparing the boundary of a block}
-
-When $\Sweep$ is used to prepare a block boundary, completed roots remain live until every root is ready. The next lemma accounts for this retained space when dividing the budget among computations.
-
-\begin{lemma}
-\label{lem:frontier}
-Let $m\ge2$ disjoint height-$q$ subtrees have no pebbles and arbitrary ghosts. If $m+q\le b$ and $2m-1\le b$, their roots can all be prepared and retained with space at most $b$, work $O(m2^q)$, and depth $O(q+m2^q/b)$.
-\end{lemma}
-\begin{proof}
-If $m(q+1)\le b$, give each subtree $\lfloor b/m\rfloor$ registers and run $\Sweep$ concurrently on all of them. These local budgets sum to at most $b$ and are at least $q+1$. By \cref{lem:sweep}, the depth is $O(q+m2^q/b)$.
-
-Otherwise reserve $m-1$ registers for completed roots and assign $q+1$ to each active computation. The two hypotheses imply
-$b-m+1\ge\max\{(b+1)/2,q+1\}$, so a batch can contain
-\[
-a=\left\lfloor\frac{b-m+1}{q+1}\right\rfloor\ge\frac{b}{4(q+1)}
-\]
-subtrees. There are $O(m(q+1)/b)$ batches, each of depth $O(q+2^q/(q+1))$. Their total depth is $O(m2^q/b)$ because $q(q+1)=O(2^q)$. Their peak space is at most $m-1+a(q+1)\le b$.
-
-In both cases each vertex is computed once, giving $O(m2^q)$ work, and the $m$ roots remain pebbled when preparation ends.
-\end{proof}
-
-\section{The storage--recomputation lower bound}
-\label{app:storage}
-
-To prove \cref{thm:weighted}, set $L=1+\log^*n$.
-For bounded $L$, the bound follows from $\Pi\ge n$ after
-adjusting the absolute constant. We therefore assume that
-$L$ is sufficiently large and construct the partitions
-described in \cref{sec:area}.
-
-Start with the larger child subtree of $r$, with
-$m_0\ge(n-1)/2$ vertices. Recursively partition this subtree
-until all pieces have size at most $M_L=2^{L^2}$.
-For a subtree $C$ with $m>M_L$ vertices, set
-\[
-a=\left\lfloor\frac{\log m}{16L}\right\rfloor, \qquad \ell=\left\lfloor\frac12\log m\right\rfloor.
-\]
-Here $a$ controls the piece size, and $\ell$ is a depth
-threshold measured from $\operatorname{root}(C)$.
-By \cref{lem:partition}, take connected pieces with
-$a/4<|Q|\le a$.
-
-At most $2^\ell-1$ vertices lie fewer than $\ell$ edges below
-$\operatorname{root}(C)$. Each piece has at most $a$ vertices,
-so pieces rooted at these vertices cover at most
-$a2^\ell\le a\sqrt m\le m/4$ vertices.
-The remaining pieces have roots at distance at least $\ell$
-from $\operatorname{root}(C)$ and contain at least $3m/4$
-vertices in total.
-
-For each such piece $Q$, let $p=\parv(\operatorname{root}(Q))$.
-This parent is at distance at least $\ell-1$ from
-$\operatorname{root}(C)$, so \cref{eq:final-removal} gives
-\[
- |I(C,Q)|\ge\ell-1\ge La\ge L|Q|.
-\]
-If $Q$ contains no pebbles after some round $t$ with
-$\tau(\operatorname{root}(C))\le t<\tau(p)$,
-\cref{lem:charging} assigns at least $|Q|$ later placements
-to its interval. Otherwise, $Q$ contains a pebble after every
-such round and contributes at least $L|Q|$ occupied
-vertex--round pairs. After dividing by $L$, this storage
-contributes at least $|Q|$ to $\Area/L$.
-Thus these pieces contribute at least $3|C|/4$ to
-$\Pi+\Area/L$.
-
-It remains to count how many partition levels contribute
-this amount. For sufficiently large $L$ and $m>M_L$,
-\[
-|Q|>a/4\ge\frac{\log m}{128L}\ge\log\log m.
-\]
-For the last inequality, put $x=\log m>L^2$.
-The function $x/\log x$ is increasing for large $x$,
-and its value at $L^2$ eventually exceeds $128L$.
-Consequently a partition decreases the iterated logarithm
-of a piece's size by at most two.
-
-The initial value is $\log^*m_0=L-O(1)$.
-At termination it is at most
-$\log^*M_L=O(1+\log^*L)=o(L)$.
-Every vertex of the initial subtree therefore belongs to
-$\Omega(L)$ subtrees that are split further.
-Repeat the charge inside every piece. All charged
-vertex--time sets are disjoint by \cref{lem:charging}.
-Summing the sizes of the subtrees that are split counts
-each initial vertex $\Omega(L)$ times.
-Since $m_0=\Omega(n)$, we obtain
-$\Pi+\Area/L=\Omega(nL)$.
-
-\section{Details of the point-addition comparison}
+\subsection{Circuit costs and validation}
 \label{app:application}
 
 The comparison uses the public CFS \href{https://gitlab.inria.fr/capsule/qarton-projects/compressed-ec-dlog}{implementation} at commit \texttt{7fedcc5b} and Qarton v1.0.0 at commit \texttt{d55356ba}. Both schedules use the same tree, window indices, lookup tables, and arithmetic circuits. They perform the $(2,2)$ root update once and clear all temporary values and ghosts. A projective-coordinate triple occupies 54 qubits for P-224 and 57 for P-256 at the selected primes. The conservative cap includes fixed inputs and accumulators, live values, and the full scratch of the active circuit. Classical measurement records are excluded.
@@ -1059,6 +1024,10 @@ This limits cleanup boundaries to four values in both curve instances. The corre
 The public cost model assigns zero Toffoli cost to inverse dummy lookups. To measure the effect of this convention, we also charge each inverse lookup the cost of its forward lookup while keeping both schedules fixed. For P-256 at prime $521177$, the costs then become $16{,}672{,}838$ and $12{,}480{,}256$, a $25.15\%$ reduction. This sensitivity calculation uses the recorded schedules without synthesizing new inverse circuits.
 
 Validation comprised six traces with 1,321 events, checked for dependencies, phases, output updates, cleanup, work, and space. For each of the three curve--prime instances, the public simulator checked both schedules on four basis inputs and two four-term superpositions against independent integer outputs. A four-leaf instance was also checked with fully expanded lookup and arithmetic gates. The cryptographic-size estimates use the public model's symbolic lookup and arithmetic shortcuts.
+
+\section{Discussion}
+
+Determining all achievable work--depth pairs at a fixed space budget remains open, beyond the separate optima and the separation in \cref{sec:separation}. The lower-bound argument uses the fact that each intermediate value has one parent, so shared values in a DAG require a different analysis. Circuit applications also require accounting for unequal value widths and scratch space, as the point-addition comparison illustrates.
 
 \printbibliography
 \end{document}
