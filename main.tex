@@ -467,14 +467,14 @@ The space bound follows from \cref{eq:boundary-space}.
 \subsection{Parallel depth upper bound}
 \label{sec:parallel-upper}
 
-We now derive a depth upper bound for parallel spooky pebbling at every feasible space budget. The schedule parallelizes both boundary preparation and the cleanup of independent subtrees. Once block cleanup has reduced the subtrees sufficiently, we allocate the space among several jobs and process them in parallel batches. We use equal-depth boundaries so that the resulting subtrees have the same height and can follow the same schedule.
+In this section, we construct and analyze a parallel spooky pebbling algorithm for complete binary trees at every feasible space budget. We parallelize boundary preparation and the cleanup of independent subtrees. Equal-depth boundaries give the resulting subtrees a common height and schedule. Once block cleanup has made them small enough, we divide the space among jobs and process them in parallel batches.
 At the minimum budget $s=h+1$, our schedule achieves depth $O(n/\log\log n)$. The matching lower bound in \cref{eq:universal-depth} establishes asymptotic optimality.
 
 For the initial root computation and boundary preparation, we use $\Sweep$, a parallel counterpart of $\Fast$.
 
 \begin{lemma}[Depth analysis of $\Sweep$]
 \label{lem:sweep}
-For a complete subtree $T$ of height $q$ and any space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
+For a complete subtree $T$ of height $q$ and space budget $b\ge q+1$, a procedure $\Sweep(q,b)$ computes and retains its root in depth
 \begin{equation}
 O\!\left(q+\frac{2^q}{b}\right).
 \label{eq:sweep}
@@ -579,12 +579,18 @@ The two work terms reflect the cleanup stages: large subtrees contribute $O(nh/\
 
 At $s=\Theta(n)$, this extra work can be avoided by a direct block schedule. A feasible equal-depth boundary with $\Theta(s)$ roots leaves subtrees of constant height. We prepare the boundary with $\Sweep$, compute and uncompute the top block while retaining the output, and fully clean the remaining subtrees in parallel batches. The resulting schedule uses $O(n)$ work and has depth $O(h)$.
 
-We have combined $\Sweep$, block cleanup, and $\Resolve$ into a complete parallel pebbling algorithm and established work and depth bounds for every feasible space budget. The next section proves that this algorithm achieves asymptotically optimal depth.
+We have combined $\Sweep$, block cleanup, and $\Resolve$ into a complete parallel pebbling algorithm and established work and depth bounds for every feasible space budget. \Cref{sec:parallel-lower} proves that this algorithm achieves asymptotically optimal depth.
+
+
+
+
+
+
+
+
 
 \section{Work lower bounds and optimality}
 \label{sec:lower-bounds}
-
-
 
 In this section, we establish work optimality for $B_h$ through a lower bound valid for every full binary tree, including unbalanced trees. We count the recomputation forced by the space budget in a sequential strategy and extend the result to the parallel model by serialization.
 
@@ -833,6 +839,11 @@ For the construction, $s=\Theta(n/h)$ gives $\log(s+1)=\Theta(h)$. Substitution 
 \end{proof}
 
 For budgets with $h/\log(s+1)=\Omega(\lambda(h))$, the additional $n\lambda(h)$ term in the parallel construction is absorbed by $nh/\log(s+1)$. Its work then matches \cref{eq:main-work}, while its depth remains optimal. This includes the minimum budget $s=h+1$.
+
+
+
+
+
 
 \section{Application to RNS point-addition trees}
 \label{sec:cfs-case-study}
