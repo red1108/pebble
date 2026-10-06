@@ -242,7 +242,7 @@ A configuration is a pair $(P,G)$ of disjoint subsets of $V$. Vertices in $P$ ha
 \Ghost(v) & v\in P & (P\setminus\{v\},\ G\cup\{v\}) & 0
 \end{array}
 \]
-When $v\in G$, $\Peb(v)$ also applies the single-qubit phase corrections specified by the stored measurement outcome, clearing the ghost. \mingyu{We should discuss why work doesn't count for ghost. And discuss about kss setting, and why this gives asymptotically same work.}
+When $v\in G$, $\Peb(v)$ also applies the single-qubit phase corrections specified by the stored measurement outcome, clearing the ghost.
 
 The initial configuration is $(\varnothing,\varnothing)$, and the goal is $(\{r\},\varnothing)$: retain the root value and clear every other pebble and every ghost.
 
@@ -300,7 +300,13 @@ Any parallel strategy can be serialized by executing each round's actions in ord
 
 The computation has two parts: compute the root value from the bottom, then clear every other vertex while retaining the root. With space $s=n$, we can hold all vertex values at once. Pebbling the tree bottom-up and unpebbling every non-root vertex top-down uses $n+(n-1)=2n-1$ work. Under a smaller space budget, values must be released before the cleanup that needs them, and recovering those values requires additional work.
 
-The bottom-up \texttt{fast\_pebble} routine of KSS, which we call $\Fast$, computes the root with $O(n)$ work using the minimum feasible $h+1$ pebbles, but leaves ghosts below it. KSS gave an $O(n\log n)$-step strategy to clear these ghosts at the same minimum budget~\cite[Theorem~5.5]{KSS2025}. The additional work comes from reconstructing child values during cleanup. We reduce this recomputation through block cleanup, introduced in \cref{sec:block-cleanup}, then analyze its sequential work and parallel depth. \mingyu{We should discuss little bit more about parallel scheduling and work-depth tradeoff.}
+The bottom-up \texttt{fast\_pebble} routine of KSS, which we call $\Fast$, computes the root with $O(n)$ work using the minimum feasible $h+1$ pebbles, but leaves ghosts below it. KSS gave an $O(n\log n)$-step strategy to clear these ghosts at the same minimum budget~\cite[Theorem~5.5]{KSS2025}. The additional work comes from reconstructing child values during cleanup. We reduce this recomputation through block cleanup, introduced in
+\cref{sec:block-cleanup}. For parallel execution, we also overlap
+independent computations and cleanup jobs to reduce depth.
+Dividing the space budget among jobs can require additional
+recomputation, leading to the work--depth tradeoff examined
+in \cref{sec:separation}.
+
 
 \subsection{Bottom-up root calculation}
 \label{sec:fast-root}
