@@ -64,11 +64,11 @@
   vertex label/.style={font=\fontsize{12}{14}\selectfont,inner sep=0pt},
   callout/.style={font=\fontsize{11}{13}\selectfont,inner sep=0pt}
 ]
-  % A symmetric layout, with equal spacing at each vertex level.
+  % Keep the horizontal layout; reduce the original 1.45 cm level gap by 30%.
   \foreach \v in {1,...,15} {
     \pgfmathtruncatemacro{\level}{floor(ln(\v)/ln(2)+0.00001)}
     \pgfmathsetmacro{\xx}{(\v-pow(2,\level)+0.5)*12.8/pow(2,\level)-6.4}
-    \pgfmathsetmacro{\yy}{-1.45*\level}
+    \pgfmathsetmacro{\yy}{-1.015*\level}
     \coordinate (v\v) at (\xx,\yy);
   }
 
@@ -90,15 +90,15 @@
   \draw[edgegray,line width=0.8pt,-{Stealth[length=4pt,width=4pt]}]
     (-1.00,0.08) -- (-0.51,0.08);
 
-  \node[callout,anchor=east] (leaves) at (-6.60,-4.35) {Leaves};
+  \node[callout,anchor=east] (leaves) at (-6.60,-3.045) {Leaves};
   \draw[edgegray,line width=0.8pt,-{Stealth[length=4pt,width=4pt]}]
-    (-6.50,-4.35) -- (-6.07,-4.35);
+    (-6.50,-3.045) -- (-6.07,-3.045);
 
   % The displayed snapshot has ten stored values and two pending corrections.
-  \node[font=\fontsize{12}{15}\selectfont,inner sep=0pt] at (0,-5.50)
+  \node[font=\fontsize{12}{15}\selectfont,inner sep=0pt] at (0,-4.195)
     {$P=\{\PebbledVertices\},\qquad G=\{\GhostVertices\}$};
   \node[font=\fontsize{10}{12}\selectfont,inner sep=0pt,text=edgegray]
-    at (0,-6.05)
+    at (0,-4.745)
     {$|P|=10$ quantum registers\qquad $|G|=2$ pending phase corrections};
 \end{tikzpicture}
 \end{document}
