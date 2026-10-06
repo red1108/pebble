@@ -108,7 +108,7 @@ Pebble games model computations under a fixed space budget. Spooky pebbling allo
  \Theta\!\left(h+\frac ns
  \max\!\left\{\frac{h}{\log(s+1)},\,1+\log^*h\right\}\right).
 \]
-The work bound resolves the time-optimality question left open by Kornerup, Sadun, and Soloveichik. Our lower bounds hold for every full binary tree. The main idea is to retain the largest balanced boundary allowed by the budget and uncompute the vertices above it before releasing its values. At space $\Theta(n/h)$, the least work of a depth-optimal strategy is $\Theta(n(1+\log^*h))$, whereas the unrestricted work optimum is $\Theta(n)$. Applying our schedule to the RNS point-addition trees in the public implementation of Chevignard, Fouque, and Schrottenloher reduces their evaluation cost by $20.86\%$ for a P-224 instance and $22.66\%$ for a P-256 instance, using the same arithmetic circuits and peak workspace.
+The work bound resolves the time-optimality question left open by Kornerup, Sadun, and Soloveichik. Our lower bounds hold for every full binary tree. The main idea is to retain the largest balanced boundary allowed by the budget and uncompute the vertices above it before releasing its values. At space $\Theta(n/h)$, the least work of a depth-optimal strategy is $\Theta(n(1+\log^*h))$, whereas the unrestricted work optimum is $\Theta(n)$. Applying our schedule to the RNS point-addition trees in the public implementation of Chevignard, Fouque, and Schrottenloher reduces their Toffoli/AND gate count by $20.86\%$ for a P-224 instance and $22.66\%$ for a P-256 instance, using the same arithmetic circuits and peak workspace.
 \end{abstract}
 
 \section{Introduction}
@@ -185,13 +185,24 @@ At the minimum budget $s=h+1$, a single parallel construction attains
 \end{equation}
 The work bound improves the KSS bound by a factor of $\log\log n$ and resolves their question about time-optimality on complete binary trees. At space $s=\Theta(n)$, linear work and depth $\Theta(h)$ are attainable.
 
+\mingyu{todo: fix this at last}
+Our algorithms reduce repeated reconstruction during cleanup through
+\emph{block cleanup}. We retain the values along a block's boundary while
+computing and uncomputing the intermediate vertices above it. For parallel
+execution, we also overlap independent boundary computations and the
+cleanup of disjoint subtrees.
+
 For an associative operation, we can change the parenthesization
 without changing the input order or the result.
 Each parenthesization gives an evaluation tree.
 We therefore ask which tree shape minimizes work and parallel
 depth at a common space budget.
 
-Our lower bounds allow us to compare these tree shapes. A full binary tree is one in which every internal vertex has exactly two children. For any such tree with $n$ vertices, we prove a work lower bound of $\Omega(n\log n/\log(s+1))$. We also bound how long values must remain in memory. Define cumulative storage as the sum of the space used in each round. Every parallel strategy has cumulative storage $\Omega(n\lambda(n))$, and a strategy with space at most $s$ and depth $D$ has cumulative storage at most $sD$. This gives an additional lower bound on depth. Combining these bounds with our complete-tree constructions gives the following result.
+A full binary tree has exactly two children at each internal vertex.
+Our lower bounds hold for every such tree, including unbalanced trees,
+by accounting for the recomputation and storage required during cleanup.
+Our complete-tree constructions attain these bounds, yielding the
+following optimality result at a common space budget.
 
 \begin{theorem}[Optimality over tree shapes]
 \label{thm:main-shape}
@@ -200,19 +211,7 @@ Let $N=2^{h-1}$, and let $\mathcal T_N$ contain all ordered full binary trees wi
 
 Work and depth can require different strategies. At $s=\Theta(n/h)$, the minimum work is $\Theta(n)$, while the minimum depth is $\Theta(h\lambda(h))$. Every strategy attaining this depth performs $\Omega(n\lambda(h))$ work, and our construction attains that work bound. Thus a strategy that minimizes depth in this regime must do asymptotically more work than one that minimizes work alone.
 
-We also apply our cleanup strategy to a fixed point-addition tree in the public implementation of Chevignard, Fouque, and Schrottenloher~\cite{CFS2026}. Their computation uses a residue number system (RNS), evaluating the point-addition formulas modulo several small primes. With the same tree and arithmetic circuits, our strategy reduces per-prime Toffoli/AND-equivalent work by $20.86\%$ for a P-224 instance and $22.66\%$ for the primary P-256 instance, with unchanged peak workspace. These measurements use the costs of the individual circuits rather than unit costs for tree operations. \Cref{sec:cfs-case-study} gives the comparison.
-
-\subsection{Proof overview}
-
-
-\mingyu{todo: fix this at last}
-Our main idea is retaining a boundary of subtree values while computing and uncomputing the vertices above it. This \emph{block cleanup} leaves smaller subtrees to be cleared recursively. As the remaining subtree height decreases, the same cleanup budget permits deeper blocks. Each leaf therefore participates in $O(h/\log(s+1))$ blocks. Since a block costs constant work per leaf in its subtree, summing these charges gives the sequential upper bound.
-
-For the work lower bound, we use the final removal of each non-output value. It must be an uncomputation, since a final measurement would leave a ghost that cannot be cleared later. Its children must still be present, so final removals proceed from ancestors to descendants. When the top vertex of a region is finally removed, the space budget forces many smaller pieces to contain no pebble, so their values must be reconstructed to complete the cleanup below. Repeating this argument at smaller scales gives the work bound. The order of final removals separates the charged time intervals, preventing double counting.
-
-To reduce depth, we parallelize boundary preparation and the cleanup of independent subtrees. Once the subtrees are small enough to process in batches, each cleanup stage reduces their height from $r$ to $O(\log r)$ in $O(r+n/s)$ rounds. The height terms sum to $O(h)$ over these stages, while the $n/s$ term is paid at each of $O(\lambda(h))$ stages. This repeated cost produces the iterated-logarithm term in the depth bound.
-
-For the depth lower bound, we also charge for values kept in memory: each piece either retains a pebble over a long interval or loses all its pebbles and must be reconstructed. Summing these charges across scales gives the cumulative-storage lower bound. The same argument shows that cumulative storage $O(n\lambda(n))$ requires $\Omega(n\lambda(n))$ work. At space $\Theta(n/h)$, this applies to every depth-optimal strategy and establishes the separation between minimum work and the work required for optimal depth.
+We also apply our cleanup strategy to a fixed point-addition tree in the public implementation of Chevignard, Fouque, and Schrottenloher~\cite{CFS2026}. Their computation uses a residue number system (RNS), evaluating the point-addition formulas modulo several small primes. With the same tree and arithmetic circuits, our strategy reduces per-prime Toffoli/AND gate count by $20.86\%$ for a P-224 instance and $22.66\%$ for the primary P-256 instance, with unchanged peak workspace. These measurements use the costs of the individual circuits rather than unit costs for tree operations. \Cref{sec:cfs-case-study} gives the comparison.
 
 \section{Pebbling models}
 \label{sec:models}
