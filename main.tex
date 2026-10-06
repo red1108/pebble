@@ -153,7 +153,12 @@ On more general dependency graphs, KSS studied the hardness of minimizing pebble
 
 Another way to reduce execution time is to perform independent operations in parallel. To formalize this in reversible computing, Blocki, Holman, and Lee introduced parallel reversible pebbling~\cite{BHL2022}. Combining this framework with spooky pebbling, Kahanamoku-Meyer, Ragavan, and Van Kirk (KMRV) introduced parallel spooky pebbling, which also allows registers to be released by measurement~\cite{KMRV2026}. In their model, operations are executed in synchronous rounds: the number of rounds determines the depth, while the total number of computations and uncomputations determines the work. Performing multiple operations in a single round can therefore reduce depth without increasing total work.
 
-KMRV studied this model on a linear chain of $\ell$ vertices, showing that reaching the target and clearing all values requires an optimal $2\ell$ rounds using $O(\log\ell)$ pebbles~\cite{KMRV2026}. They also applied their construction to reduce the depth of arithmetic in Regev's factoring algorithm.
+KMRV studied a linear chain with a fixed initial pebble and $\ell$
+additional vertices. They showed that visiting the terminal vertex
+and then clearing these additional vertices takes an optimal $2\ell$
+rounds using $O(\log\ell)$ pebbles~\cite{KMRV2026}. They also applied
+their construction to reduce the depth of arithmetic in Regev's
+factoring algorithm.
 
 These results leave the tradeoffs on binary trees open. Independent subtrees can be computed in parallel, but both child values must be available to compute or uncompute their parent. Under a fixed space budget, a schedule must decide which subtrees to process concurrently and which values to retain for cleanup. We ask what work and depth are optimal at each space budget, and whether a single strategy can minimize both.
 
@@ -759,8 +764,10 @@ is counted twice.
 \label{lem:charging}
 Fix a successful strategy and recursively partition a connected
 subtree of $T$ excluding $r$. For each piece $Q$ of a subtree $C$,
-write $p=\parv(\operatorname{root}(Q))$. Consider those pieces
-for which $p$ lies strictly below $\operatorname{root}(C)$, and define
+write $p=\parv(\operatorname{root}(Q))$. For pieces with $p$
+strictly below $\operatorname{root}(C)$, the interval $I(C,Q)$
+starts immediately after the final uncomputation of
+$\operatorname{root}(C)$ and ends at the final uncomputation of $p$:
 \begin{equation}
  I(C,Q)=\{\tau(\operatorname{root}(C))+1,\ldots,\tau(p)\}.
  \label{eq:charge-interval}
@@ -835,7 +842,7 @@ Each piece satisfies
  \frac{m}{32(s+1)}<|Q|\le a.
  \label{eq:work-partition}
 \end{equation}
-After $\operatorname{root}(C)$ is finally uncomputed, exclude
+Immediately after $\operatorname{root}(C)$ is finally uncomputed, exclude
 its own piece and all pieces containing pebbles.
 Let $\mathcal E(C)$ contain the remaining pieces. Since at most
 $s+1$ pieces are excluded,
