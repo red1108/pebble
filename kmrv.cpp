@@ -1,4 +1,4 @@
-#include "pebbling_common.hpp"
+#include "round_packing.hpp"
 #include <cmath>
 
 // KMRV, Algorithms 2.2 and 2.3: https://arxiv.org/abs/2510.08432
@@ -145,36 +145,6 @@ Schedule prepare_inputs(int inputs, int space, const Schedule& path) {
     return out;
 }
 
-// Prefetch the next input batch in the current computation round when legal.
-void run_kmrv(QuantumComputer& qc, int inputs, Schedule schedule) {
-    vector<int> active(qc.size()+1, -1);
-    for(int t=0; t<(int)schedule.size(); t++) {
-        Round round = std::move(schedule[t]);
-        bool computation = false;
-        auto mark = [&](int x) {
-            active[x] = t;
-            if(!qc.leaf(x)) {
-                computation = true;
-                auto [left, right] = qc.children(x);
-                active[left] = active[right] = t;
-            }
-        };
-        for(int x : round.pebble) mark(x);
-        for(int x : round.unpebble) mark(x);
-        if(computation && t+1<(int)schedule.size()) {
-            const auto& next = schedule[t+1];
-            bool load = !next.pebble.empty() && next.unpebble.empty() && next.measure.empty();
-            for(int x : next.pebble)
-                load &= x>=inputs && active[x]!=t && qc.state(x)!=QuantumComputer::State::pebble;
-            if(load && qc.metrics().occupied+(int)(round.pebble.size()+next.pebble.size())<=qc.space_limit()) {
-                round.pebble.insert(round.pebble.end(), next.pebble.begin(), next.pebble.end());
-                t++;
-            }
-        }
-        qc.execute(round);
-    }
-}
-
 int main(int argc, char** argv) {
     try {
         int h, s;
@@ -185,7 +155,7 @@ int main(int argc, char** argv) {
         QuantumComputer qc(left_fold_tree(inputs), s);
         Schedule path = kmrv_path(length);
         auto raw = check_path(inputs, path);
-        run_kmrv(qc, inputs, prepare_inputs(inputs, s, path));
+        run_packed(qc, prepare_inputs(inputs, s, path));
         check_final(qc);
         cout << "KMRV retained-output construction:" << endl;
         cout << "h: " << h << ", inputs: " << inputs << ", path length: " << length << ", space: " << s << endl;
