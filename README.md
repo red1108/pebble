@@ -1,58 +1,62 @@
-# Pebble manuscript
+# Spooky pebbling on binary trees
 
-`main.tex` is the tracked manuscript. It uses `references.bib` and
-`figs/binary_pebbling_concept.png` from this repository.
+Implementations for *Optimal (Parallel) Spooky Pebbling on Binary Trees*.
+The tree has `h` vertex levels and `n = 2^h - 1` vertices. Each run starts
+empty and finishes with only the root pebbled, with every ghost cleared.
 
-[checkpoints/checkpoint0930.tex](checkpoints/checkpoint0930.tex) preserves the
-author-provided manuscript before the September 30 revision, byte for byte.
-Keep that checkpoint unchanged; continue editing `main.tex`.
-
-When a PDF build is requested, run `python3 build.py` from any directory. The PDF is written to
-`../paper/main.pdf`, and LaTeX intermediates go to `../paper/.build/`.
-No PDF or build outputs belong in this Git repository.
-
-`sequential.cpp` compares sequential KSS and block-cleanup schedules. It counts
-work as pebble plus unpebble, excluding ghosting. `parallel.cpp` builds the
-manuscript's ParallelPebble, equal-depth block, and batched forest schedule.
-It checks first-phase active-set conflicts, second-phase ghosting, the round's
-transient space, and final cleanup. Both use `pebbling_common.hpp` for tree
-geometry, metrics, and `pebble_traversal`. This is a schedule simulator, not CPU
-multithreading.
-
-The paper's routine names use snake_case in C++:
-
-| Manuscript | C++ |
+| File | Algorithm |
 |---|---|
-| SequentialPebble | `sequential_pebble` |
-| ParallelPebble | `parallel_pebble` |
-| FastClean | `fast_clean` |
-| Boundary | `build_boundary` |
-| Parallel block contraction | `contract` |
+| [kss.cpp](kss.cpp) | Sequential KSS, following the original traversal |
+| [sequential.cpp](sequential.cpp) | Our sequential balanced-boundary cleanup |
+| [parallel.cpp](parallel.cpp) | Our parallel rounds, block cleanup, and forest resolution |
+| [pebbling_common.hpp](pebbling_common.hpp) | Tree state, actions, counters, and `sequential_pebble` |
 
-The sequential Contract steps remain inside `fast_clean`; the parallel Resolve
-stages remain inside `run_parallel`. The uniform-cut control uses
-`uniform_contract`, and `contract_peak` gives the balanced-boundary space cost.
+The function names follow the paper in snake_case: `sequential_pebble`,
+`release`, `boundary`, `contract`, `fast_clean`, `parallel_pebble`, and `resolve`.
+`fast_clean(x, r, b, rho)` takes the subtree root, height, local budget, and
+root-retention flag. The parallel `contract(x, r, k, b)` uses an equal-depth
+cut `k`. `resolve_space(r)` is the paper's budget `p(r)`.
 
-From this repository, build and test without leaving binaries in Git:
+Work is `place + unpebble`; ghosting costs no work. `pebble` also clears an
+existing ghost and increments `exorcise`. `unpebble` requires a pebble, so
+clearing a ghost and erasing its value takes two explicit actions.
+
+The parallel program simulates the paper's synchronous rounds. It reports
+depth and cumulative storage as well as work. Each round checks all
+computation and uncomputation preconditions together and requires disjoint
+active sets. Ghosting follows in the second phase. Space and cumulative
+storage count `U_t = P_(t-1) union P_t^+`, including values uncomputed during
+the round. This measures schedule depth rather than CPU running time.
+
+Build and check with a C++17 compiler and Python 3:
 
 ```sh
-mkdir -p ../paper/.build
-clang++ -std=c++17 -O2 -Wall -Wextra -Wpedantic sequential.cpp -o ../paper/.build/pebble-sequential
-clang++ -std=c++17 -O2 -Wall -Wextra -Wpedantic parallel.cpp -o ../paper/.build/pebble-parallel
-../paper/.build/pebble-sequential --test
-../paper/.build/pebble-parallel --test
+python3 tests/check.py
+../paper/.build/pebble-kss 10 11
 ../paper/.build/pebble-sequential 10 11
 ../paper/.build/pebble-parallel 10 11
 ```
 
-In the sequential comparison at height 10 and space 11, KSS uses work 13,823
-and block cleanup uses 7,654; both peak at 11 pebbles. `--controls` includes
-two regression schedules. The sequential `--test` suite checks 1,018
-height/budget cases and 4,072 full
-schedules. The parallel suite checks round legality and resources across all
-budgets through height 8 and selected larger cases.
+Arguments are `[height [space]]`, defaulting to height 10 and the minimum
+budget. Heights 1 through 20 are supported. For `h >= 2`, the budget must
+satisfy `h + 1 <= s <= n`; a single leaf uses one pebble. KSS always follows
+its minimum-space schedule, even when given a larger budget. Assertions
+check legality and cleanup, so compile without `-DNDEBUG`.
 
-The surrounding local workspace is mapped in `../README.md`. Historical
-manuscripts, superseded reports and old handoffs are indexed in
-`../archive/README.md`, outside this Git repository. The parent `.ignore`
-keeps archives, build outputs and external dependencies out of default searches.
+At `h = 10, s = 11`:
+
+| Algorithm | Work | Peak pebbles | Parallel depth |
+|---|---:|---:|---:|
+| KSS | 13,823 | 11 | — |
+| Our sequential | 7,654 | 11 | — |
+| Our parallel | 6,823 | 11 | 5,037 |
+
+The parallel run has cumulative storage 32,370. The tests cover every
+feasible budget through height 9 and selected cases through height 20.
+They check final states, KSS counts, balanced-boundary costs, parallel
+resources, and rejection of illegal rounds. These are finite execution
+checks; the asymptotic arguments are in the paper.
+
+`main.tex` is the manuscript source, with `references.bib` and `figs/` beside
+it. When a PDF build is needed, `python3 build.py` writes `../paper/main.pdf`
+and keeps temporary files in `../paper/.build/`.

@@ -1,496 +1,268 @@
 #include "pebbling_common.hpp"
 
-#include <algorithm>
-#include <cstdint>
-#include <iostream>
-#include <iterator>
-#include <string>
-#include <utility>
-#include <vector>
-using namespace std;
-using pebbling::MAX_H;
-using pebbling::Metrics;
-using pebbling::nodes;
-using pebbling::require;
-
-// A round has simultaneous P/U actions, followed by unrestricted ghosting.
+// First pebble/unpebble together, then ghost.
 struct Round {
     vector<int> place, unpebble, ghost;
 };
 using Schedule = vector<Round>;
+bool active[1<<max_h];
 
-class ParallelSimulator {
-    int n, cap, stamp = 0;
-    vector<unsigned char> state;  // 0: empty, 1: pebble, 2: ghost
-    vector<int> active_stamp;
-    Metrics count;
-    uint64_t depth = 0, area = 0;
-
-    bool ready(int x) const {
-        return pebbling::leaf(x, n) ||
-               (state[2*x] == 1 && state[2*x+1] == 1);
-    }
-
-    void claim_active_set(int x) {
-        auto claim = [this](int v) {
-            require(active_stamp[v] != stamp, "overlapping active sets in a round");
-            active_stamp[v] = stamp;
-        };
-        claim(x);
-        if (!pebbling::leaf(x, n)) {
-            claim(2*x);
-            claim(2*x+1);
-        }
-    }
-
-public:
-    ParallelSimulator(int height, int budget)
-        : n(nodes(height)), cap(budget), state(n+1), active_stamp(n+1) {}
-
-    void execute(const Round& round) {
-        require(!round.place.empty() || !round.unpebble.empty() ||
-                !round.ghost.empty(), "empty round");
-        ++stamp;
-        // Check every first-phase precondition against the same old state.
-        for (int x : round.place) {
-            require(1 <= x && x <= n, "invalid placement vertex");
-            require(state[x] != 1 && ready(x), "illegal parallel placement");
-            claim_active_set(x);
-        }
-        for (int x : round.unpebble) {
-            require(1 <= x && x <= n, "invalid unpebble vertex");
-            require(state[x] == 1 && ready(x), "illegal parallel unpebble");
-            claim_active_set(x);
-        }
-
-        // U_t includes old pebbles even when they are uncomputed this round.
-        int occupied = count.live + static_cast<int>(round.place.size());
-        require(occupied <= cap, "parallel round exceeds space budget");
-        count.peak = max(count.peak, occupied);
-        area += occupied;
-        ++depth;
-
-        for (int x : round.place) {
-            if (state[x] == 2) ++count.exorcise;
-            state[x] = 1;
-            ++count.place;
-            ++count.live;
-        }
-        for (int x : round.unpebble) {
-            state[x] = 0;
-            ++count.unpebble;
-            --count.live;
-        }
-        for (int x : round.ghost) {
-            require(1 <= x && x <= n && state[x] == 1,
-                    "illegal parallel ghost");
-            state[x] = 2;
-            ++count.ghost;
-            --count.live;
-        }
-    }
-
-    void execute(const Schedule& schedule) {
-        for (const Round& round : schedule) execute(round);
-    }
-
-    void check_parallel_pebble(int root, int height) const {
-        require(state[root] == 1, "ParallelPebble root missing");
-        for (int level = 1; level < height; ++level)
-            for (int v = root << level; v < (root+1) << level; ++v)
-                require(state[v] == 2, "ParallelPebble left a non-root value unghosted");
-    }
-
-    void finish() const {
-        require(state[1] == 1 && count.live == 1, "output root missing");
-        for (int x = 2; x <= n; ++x)
-            require(state[x] == 0, "pebble or ghost left behind");
-        require(count.place == count.unpebble + count.ghost + 1,
-                "pebble conservation failed");
-    }
-
-    const Metrics& metrics() const { return count; }
-    uint64_t rounds() const { return depth; }
-    uint64_t storage_area() const { return area; }
-};
-
-void append_level(vector<int>& out, int root, int depth) {
-    for (int v = root << depth; v < (root+1) << depth; ++v)
-        out.push_back(v);
+void claim(int x, vector<int>& used) {
+    assert(!active[x]);
+    active[x] = true;
+    used.push_back(x);
 }
 
-void append_schedule(Schedule& out, Schedule&& tail) {
-    out.insert(out.end(), make_move_iterator(tail.begin()),
-               make_move_iterator(tail.end()));
-}
+void run_round(const Round& round) {
+    assert(!round.place.empty() || !round.unpebble.empty() || !round.ghost.empty());
+    vector<int> used;
 
-Schedule parallelize(const vector<Schedule>& jobs) {
-    size_t length = 0;
-    for (const Schedule& job : jobs) length = max(length, job.size());
-    Schedule result;
-    result.reserve(length);
-    for (size_t t = 0; t < length; ++t) {
-        Round round;
-        for (const Schedule& job : jobs) {
-            if (t >= job.size()) continue;
-            const Round& part = job[t];
-            round.place.insert(round.place.end(), part.place.begin(), part.place.end());
-            round.unpebble.insert(round.unpebble.end(), part.unpebble.begin(),
-                                   part.unpebble.end());
-            round.ghost.insert(round.ghost.end(), part.ghost.begin(), part.ghost.end());
+    // All preconditions use the state at the start of the round.
+    for(int x : round.place) {
+        assert(child_ready(x) && !placed[x]);
+        claim(x, used);
+        if(!leaf(x)) {
+            claim(2*x, used);
+            claim(2*x+1, used);
         }
-        result.push_back(std::move(round));
     }
-    return result;
+    for(int x : round.unpebble) {
+        assert(child_ready(x) && placed[x]);
+        claim(x, used);
+        if(!leaf(x)) {
+            claim(2*x, used);
+            claim(2*x+1, used);
+        }
+    }
+    for(int x : used) active[x] = false;
+
+    // U_t includes old pebbles, even those unpebbled in this round.
+    int occupied = metrics.live+(int)round.place.size();
+    assert(occupied <= s);
+    metrics.peak = max(metrics.peak, occupied);
+    metrics.area += occupied;
+    metrics.depth++;
+
+    for(int x : round.place) pebble(x);
+    for(int x : round.unpebble) unpebble(x);
+    for(int x : round.ghost) ghost(x);
 }
 
-// Binary counting combines completed left-to-right subtree roots.
-void carry_root(Schedule& out, vector<int>& stack, int incoming) {
-    while (!stack.empty() && stack.back()%2 == 0 &&
-           stack.back()+1 == incoming) {
-        int left = stack.back();
-        stack.pop_back();
-        Round round;
-        round.place.push_back(left/2);
-        round.ghost = {left, incoming};
-        out.push_back(std::move(round));
-        incoming = left/2;
-    }
-    stack.push_back(incoming);
+void run(const Schedule& schedule) {
+    for(const auto& round : schedule) run_round(round);
 }
 
-// ParallelPebble leaves only its root pebbled; every other vertex is a ghost.
-Schedule ghost_sequential_pebble(int root, int vertex_count) {
+void add_level(vector<int>& out, int x, int d) {
+    for(int v=x<<d; v<(x+1)<<d; v++) out.push_back(v);
+}
+
+void append(Schedule& out, Schedule next) {
+    for(auto& round : next) out.push_back(std::move(round));
+}
+
+// Overlay schedules on disjoint subtrees, one round at a time.
+void parallelize(Schedule& out, const Schedule& next) {
+    out.resize(max(out.size(), next.size()));
+    for(size_t t=0; t<next.size(); t++) {
+        for(int x : next[t].place) out[t].place.push_back(x);
+        for(int x : next[t].unpebble) out[t].unpebble.push_back(x);
+        for(int x : next[t].ghost) out[t].ghost.push_back(x);
+    }
+}
+
+void depth_first(int x, Schedule& out) {
+    if(!leaf(x)) {
+        depth_first(2*x, out);
+        depth_first(2*x+1, out);
+    }
+    Round round;
+    round.place = {x};
+    if(!leaf(x)) round.ghost = {2*x, 2*x+1};
+    out.push_back(std::move(round));
+}
+
+// Combine adjacent completed roots, like carries in a binary counter.
+void carry(int x, vector<int>& roots, Schedule& out) {
+    while(!roots.empty() && roots.back()%2==0 && roots.back()+1==x) {
+        int left = roots.back();
+        roots.pop_back();
+        out.push_back({{x/2}, {}, {left, x}});
+        x /= 2;
+    }
+    roots.push_back(x);
+}
+
+Schedule parallel_pebble(int x, int r, int b) {
+    assert(r>=1 && b>=(r==1 ? 1 : r+1));
     Schedule out;
-    auto place = [&out](int v) {
-        Round round;
-        round.place.push_back(v);
-        out.push_back(std::move(round));
-    };
-    auto release = [&out](int v) { out.back().ghost.push_back(v); };
-    pebbling::pebble_traversal(root, vertex_count, place, release);
-    return out;
-}
-
-Schedule full_parallel_pebble(int root, int height) {
-    Schedule out;
-    for (int depth = height-1; depth >= 0; --depth) {
-        Round round;
-        append_level(round.place, root, depth);
-        if (depth < height-1) append_level(round.ghost, root, depth+1);
-        out.push_back(std::move(round));
-    }
-    return out;
-}
-
-Schedule parallel_pebble(int root, int height, int budget, int vertex_count);
-
-// Stagger bottom-subtree starts by two advancement rounds. Carry rounds pause
-// all unfinished jobs, as in the manuscript's b >= 2q construction.
-Schedule wavefront_parallel_pebble(int root, int height, int budget) {
-    int leaves = 1;
-    while (2*leaves <= budget/8) leaves *= 2;
-    int ell = 1;
-    while ((1 << (ell-1)) < leaves) ++ell;
-    int d = height-ell, jobs = 1 << d;
-    require(ell >= 2 && d >= 1, "invalid wavefront split");
-    Schedule out;
-    vector<int> stack;
-    for (int t = 0; t <= 2*(jobs-1)+ell-1; ++t) {
-        Round round;
-        int completed = -1;
-        int first = max(0, (t-ell+2)/2);
-        int last = min(jobs-1, t/2);
-        for (int j = first; j <= last; ++j) {
-            int age = t-2*j;
-            int subtree = (root << d)+j;
-            int level = ell-1-age;
-            append_level(round.place, subtree, level);
-            if (age > 0) append_level(round.ghost, subtree, level+1);
-            if (age == ell-1) completed = j;
+    if((1<<r)-1 <= b) {
+        for(int d=r-1; d>=0; d--) {
+            Round round;
+            add_level(round.place, x, d);
+            if(d<r-1) add_level(round.ghost, x, d+1);
+            out.push_back(std::move(round));
         }
-        out.push_back(std::move(round));
-        if (completed >= 0)
-            carry_root(out, stack, (root << d)+completed);
+        return out;
     }
-    require(stack.size() == 1 && stack[0] == root,
-            "wavefront did not produce its root");
-    return out;
-}
-
-Schedule near_height_parallel_pebble(int root, int height, int budget, int vertex_count) {
-    int ell = height/4, d = height-ell, jobs = 1 << d;
-    require(ell >= 2, "invalid near-height split");
-    Schedule out;
-    vector<int> stack;
-    for (int j = 0; j < jobs; ++j) {
-        int local_budget = budget-static_cast<int>(stack.size());
-        require(local_budget >= ell+1, "near-height subtree lacks space");
-        int subtree = (root << d)+j;
-        if (local_budget >= 2*ell)
-            append_schedule(out, parallel_pebble(subtree, ell, local_budget, vertex_count));
-        else
-            append_schedule(out, ghost_sequential_pebble(subtree, vertex_count));
-        carry_root(out, stack, subtree);
+    if(b<16) {
+        depth_first(x, out);
+        return out;
     }
-    require(stack.size() == 1 && stack[0] == root,
-            "near-height ParallelPebble did not produce its root");
-    return out;
-}
 
-Schedule parallel_pebble(int root, int height, int budget, int vertex_count) {
-    require(height >= 1 && budget >= 1, "invalid ParallelPebble parameters");
-    if (height == 1) {
-        Round round;
-        round.place.push_back(root);
-        return {std::move(round)};
-    }
-    require(budget >= height+1, "ParallelPebble lacks minimum space");
-    if (budget >= nodes(height)) return full_parallel_pebble(root, height);
-    if (budget < 16) return ghost_sequential_pebble(root, vertex_count);
-    if (budget >= 2*height) return wavefront_parallel_pebble(root, height, budget);
-    return near_height_parallel_pebble(root, height, budget, vertex_count);
-}
-
-int resolve_space(int height) {
-    int power = 1 << height;
-    return min(power-1, (16*power+height-1)/height);
-}
-
-int ceil_log2(int value) {
-    int power = 1, result = 0;
-    while (power < value) {
-        power *= 2;
-        ++result;
-    }
-    return result;
-}
-
-int largest_equal_cut(int height, int budget) {
-    int best = 0;
-    for (int k = 1; k < height; ++k) {
-        int m = 1 << k, q = height-k;
-        if (m+q <= budget && 2*m-1 <= budget) best = k;
-    }
-    require(best >= 1, "no feasible equal-depth boundary");
-    return best;
-}
-
-// Prepare an equal-depth boundary, clear its top block levelwise, then release
-// its roots. The caller subsequently handles the resulting ghost subtrees.
-Schedule contract(int root, int height, int cut_depth,
-                        int budget, int vertex_count) {
-    int m = 1 << cut_depth, q = height-cut_depth;
-    require(q >= 1 && m+q <= budget && 2*m-1 <= budget,
-            "infeasible parallel block cut");
-    int batch_size, local_budget;
-    if (m*(q+1) <= budget) {
-        batch_size = m;
-        local_budget = budget/m;
+    vector<int> roots;
+    if(b>=2*r) {
+        int p = 1, ell = 1;
+        while(2*p<=b/8) {
+            p *= 2;
+            ell++;
+        }
+        int d = r-ell, jobs = 1<<d;
+        // Start one bottom subtree every two advancement rounds.
+        for(int t=0; t<=2*(jobs-1)+ell-1; t++) {
+            Round round;
+            int completed = -1;
+            int first = max(0, (t-ell+2)/2), last = min(jobs-1, t/2);
+            for(int j=first; j<=last; j++) {
+                int age = t-2*j, v = (x<<d)+j;
+                add_level(round.place, v, ell-1-age);
+                if(age>0) add_level(round.ghost, v, ell-age);
+                if(age==ell-1) completed = v;
+            }
+            out.push_back(std::move(round));
+            // Unfinished jobs wait during these carry rounds.
+            if(completed!=-1) carry(completed, roots, out);
+        }
     } else {
-        batch_size = (budget-m+1)/(q+1);
-        local_budget = q+1;
+        int ell = r/4, d = r-ell;
+        for(int j=0; j<(1<<d); j++) {
+            int v = (x<<d)+j, local_b = b-(int)roots.size();
+            assert(local_b >= ell+1);
+            if(local_b>=2*ell) append(out, parallel_pebble(v, ell, local_b));
+            else depth_first(v, out);
+            carry(v, roots, out);
+        }
     }
-    require(batch_size >= 1, "boundary batch has no capacity");
+    assert(roots.size()==1 && roots[0]==x);
+    return out;
+}
+
+int resolve_space(int r) {
+    return min((1<<r)-1, (16*(1<<r)+r-1)/r); // p(r)
+}
+
+int choose_cut(int r, int b) {
+    int k = 0;
+    for(int i=1; i<r; i++) {
+        int m = 1<<i, q = r-i;
+        if(m+q<=b && 2*m-1<=b) k = i;
+    }
+    assert(k>0);
+    return k;
+}
+
+Schedule contract(int x, int r, int k, int b) {
+    int m = 1<<k, q = r-k;
+    assert(q>=1 && m+q<=b && 2*m-1<=b);
+    int batch_size, local_b;
+    if(m*(q+1)<=b) {
+        batch_size = m;
+        local_b = b/m;
+    } else {
+        batch_size = (b-m+1)/(q+1);
+        local_b = q+1;
+    }
+    assert(batch_size>0);
 
     Schedule out;
-    for (int first = 0; first < m; first += batch_size) {
-        vector<Schedule> jobs;
-        for (int j = first; j < min(m, first+batch_size); ++j)
-            jobs.push_back(parallel_pebble((root << cut_depth)+j, q,
-                                 local_budget, vertex_count));
-        append_schedule(out, parallelize(jobs));
+    for(int first=0; first<m; first+=batch_size) {
+        Schedule batch;
+        for(int j=first; j<min(m, first+batch_size); j++)
+            parallelize(batch, parallel_pebble((x<<k)+j, q, local_b));
+        append(out, std::move(batch));
     }
-
-    for (int depth = cut_depth-1; depth >= 0; --depth) {
+    for(int d=k-1; d>=0; d--) {
         Round round;
-        append_level(round.place, root, depth);
+        add_level(round.place, x, d);
         out.push_back(std::move(round));
     }
-    for (int depth = 0; depth < cut_depth; ++depth) {
+    for(int d=0; d<k; d++) {
         Round round;
-        append_level(round.unpebble, root, depth);
+        add_level(round.unpebble, x, d);
         out.push_back(std::move(round));
     }
     Round release;
-    for (int v = root << cut_depth; v < (root+1) << cut_depth; ++v) {
-        if (q == 1) release.unpebble.push_back(v);
-        else release.ghost.push_back(v);
-    }
+    if(q==1) add_level(release.unpebble, x, k);
+    else add_level(release.ghost, x, k);
     out.push_back(std::move(release));
     return out;
 }
 
-Schedule clean_small(int root, int height) {
+Schedule clean_small(int x, int r) {
     Schedule out;
-    for (int depth = height-1; depth >= 0; --depth) {
+    for(int d=r-1; d>=0; d--) {
         Round round;
-        append_level(round.place, root, depth);
+        add_level(round.place, x, d);
         out.push_back(std::move(round));
     }
-    for (int depth = 0; depth < height; ++depth) {
+    for(int d=0; d<r; d++) {
         Round round;
-        append_level(round.unpebble, root, depth);
+        add_level(round.unpebble, x, d);
         out.push_back(std::move(round));
     }
     return out;
 }
 
-struct Result {
-    Metrics metrics;
-    uint64_t depth = 0, area = 0;
-};
-
-Result run_parallel(int height, int space_limit) {
-    require(1 <= height && height <= MAX_H, "height must be in [1, 20]");
-    int n = nodes(height);
-    int minimum = height == 1 ? 1 : height+1;
-    require(minimum <= space_limit && space_limit <= n,
-            "space must be in [minimum, n]");
-    ParallelSimulator sim(height, space_limit);
-    sim.execute(parallel_pebble(1, height, space_limit, n));
-    sim.check_parallel_pebble(1, height);
-    require(sim.metrics().place == uint64_t(n), "ParallelPebble did not pebble each vertex once");
-
-    if (height > 1) {
-        int budget = space_limit-1;
-        int remaining_height = height-1;
-        vector<int> forest{2, 3};
-
-        // Large jobs use one subtree at a time while p(r) exceeds the budget.
-        while (resolve_space(remaining_height) > budget) {
-            int k = largest_equal_cut(remaining_height, budget);
-            vector<int> next;
-            next.reserve(forest.size() * (1 << k));
-            for (int root : forest) {
-                sim.execute(contract(root, remaining_height, k, budget, n));
-                for (int j = 0; j < (1 << k); ++j)
-                    next.push_back((root << k)+j);
-            }
-            forest = std::move(next);
-            remaining_height -= k;
-        }
-
-        // Resolve whole batches of independent subtrees at equal height.
-        while (remaining_height > 16) {
-            int per_tree = resolve_space(remaining_height);
-            int batch_size = budget/per_tree;
-            int q = ceil_log2(remaining_height)+2;
-            int k = remaining_height-q;
-            int m = 1 << k;
-            require(batch_size >= 1 && k >= 1, "invalid forest reduction");
-            vector<int> next;
-            next.reserve(forest.size() * m);
-            for (size_t first = 0; first < forest.size(); first += batch_size) {
-                vector<Schedule> jobs;
-                for (size_t i = first;
-                     i < min(forest.size(), first+static_cast<size_t>(batch_size)); ++i) {
-                    int root = forest[i];
-                    jobs.push_back(contract(root, remaining_height, k,
-                                                  per_tree, n));
-                    for (int j = 0; j < m; ++j)
-                        next.push_back((root << k)+j);
+void resolve(vector<int> forest, int r, int b) {
+    assert(b >= resolve_space(r));
+    while(true) {
+        int local_b = resolve_space(r), batch_size = b/local_b;
+        int q = r>16 ? ceil_log2(r)+2 : 0, k = r-q;
+        vector<int> next;
+        for(int first=0; first<(int)forest.size(); first+=batch_size) {
+            Schedule batch;
+            for(int i=first; i<min((int)forest.size(), first+batch_size); i++) {
+                int x = forest[i];
+                if(r<=16) parallelize(batch, clean_small(x, r));
+                else {
+                    parallelize(batch, contract(x, r, k, local_b));
+                    add_level(next, x, k);
                 }
-                sim.execute(parallelize(jobs));
             }
-            forest = std::move(next);
-            remaining_height = q;
+            run(batch);
         }
-
-        int per_tree = nodes(remaining_height);
-        int batch_size = budget/per_tree;
-        require(batch_size >= 1, "small forest lacks space");
-        for (size_t first = 0; first < forest.size(); first += batch_size) {
-            vector<Schedule> jobs;
-            for (size_t i = first;
-                 i < min(forest.size(), first+static_cast<size_t>(batch_size)); ++i)
-                jobs.push_back(clean_small(forest[i], remaining_height));
-            sim.execute(parallelize(jobs));
-        }
+        if(r<=16) return;
+        forest = std::move(next);
+        r = q;
     }
-
-    sim.finish();
-    return {sim.metrics(), sim.rounds(), sim.storage_area()};
 }
 
-int parse_int(const char* text) {
-    size_t used = 0;
-    int value = stoi(text, &used);
-    require(text[used] == '\0', "expected an integer");
-    return value;
-}
+void parallel_algorithm() {
+    run(parallel_pebble(1, h, s));
+    if(h==1) return;
 
-void self_test() {
-    {
-        ParallelSimulator active_check(2, 3);
-        Round leaves;
-        leaves.place = {2, 3};
-        active_check.execute(leaves);
-        Round conflict;
-        conflict.place = {1};
-        conflict.unpebble = {2};
-        bool rejected = false;
-        try { active_check.execute(conflict); }
-        catch (const runtime_error&) { rejected = true; }
-        require(rejected, "overlapping active sets were accepted");
-
-        ParallelSimulator space_check(2, 2);
-        space_check.execute(leaves);
-        Round parent;
-        parent.place = {1};
-        rejected = false;
-        try { space_check.execute(parent); }
-        catch (const runtime_error&) { rejected = true; }
-        require(rejected, "transient round space was not charged");
-    }
-    int cases = 0;
-    for (int height = 1; height <= 8; ++height) {
-        int n = nodes(height);
-        for (int space = height == 1 ? 1 : height+1; space <= n; ++space) {
-            Result result = run_parallel(height, space);
-            require(result.metrics.peak <= space && result.depth > 0,
-                    "parallel resource check failed");
-            if (space == n) {
-                require(result.depth == uint64_t(3*height-2),
-                        "full-space depth mismatch");
-                require(result.metrics.work() == uint64_t(3*n-2),
-                        "full-space work mismatch");
-            }
-            ++cases;
+    int b = s-1, r = h-1;
+    vector<int> forest = {2, 3};
+    while(resolve_space(r)>b) {
+        int k = choose_cut(r, b);
+        vector<int> next;
+        for(int x : forest) {
+            run(contract(x, r, k, b));
+            add_level(next, x, k);
         }
+        forest = std::move(next);
+        r -= k;
     }
-    for (auto [height, space] : {pair<int,int>{10,11}, {10,20},
-                                 {16,17}, {18,nodes(18)}}) {
-        Result result = run_parallel(height, space);
-        require(result.metrics.peak <= space, "large-case space mismatch");
-        ++cases;
-    }
-    cout << "PASS: " << cases << " parallel height/space cases; "
-         << "round legality, active sets, transient space, and cleanup checked.\n";
+    resolve(std::move(forest), r, b);
 }
 
 int main(int argc, char** argv) {
-    try {
-        if (argc == 2 && string(argv[1]) == "--test") {
-            self_test();
-            return 0;
-        }
-        require(argc <= 3, "usage: ./parallel [height [space]] or ./parallel --test");
-        int height = argc > 1 ? parse_int(argv[1]) : 10;
-        int space = argc > 2 ? parse_int(argv[2]) :
-                    (height == 1 ? 1 : height+1);
-        Result result = run_parallel(height, space);
-        cout << "h=" << height << ", n=" << nodes(height)
-             << ", space_limit=" << space << '\n';
-        cout << "depth=" << result.depth << ", work=" << result.metrics.work()
-             << ", pebble=" << result.metrics.place
-             << ", unpebble=" << result.metrics.unpebble
-             << ", ghost=" << result.metrics.ghost
-             << ", peak=" << result.metrics.peak
-             << ", cumulative_storage=" << result.area << '\n';
-    } catch (const exception& e) {
-        cerr << "Error: " << e.what() << '\n';
-        return 1;
-    }
+    if(!read_input(argc, argv)) return 1;
+    parallel_algorithm();
+    check_final();
+
+    cout << "Parallel Metrics: " << endl;
+    print_metrics();
+    cout << "depth: " << metrics.depth << endl;
+    cout << "cumulative storage: " << metrics.area << endl;
     return 0;
 }
