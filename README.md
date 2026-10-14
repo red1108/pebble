@@ -24,6 +24,11 @@ python3 compare.py 10 12 --space 32
 KSS keeps its original minimum-space schedule when given a larger budget.
 Set `CXX=clang++` or `CXX=g++` to select a compiler. Binaries go in `build/`.
 
+The paper's RNS point-addition application is in [application/](application/README.md).
+Its original circuit scripts and a reproduction runner rebuild the three CFS
+comparisons and print the work/qubit and circuit-call tables. Setup requires
+Python 3.12+ and the pinned Qarton dependency; see that folder's README.
+
 | File | Purpose |
 |---|---|
 | [compare.py](compare.py) | Build and compare the two sequential algorithms |
@@ -32,6 +37,7 @@ Set `CXX=clang++` or `CXX=g++` to select a compiler. Binaries go in `build/`.
 | [parallel.cpp](parallel.cpp) | Our parallel schedule |
 | [quantum_computer.hpp](quantum_computer.hpp) | State, actions, and resource counters |
 | [pebbling_common.hpp](pebbling_common.hpp) | Shared scheduling and CLI helpers |
+| [application/](application/README.md) | Reproduce the paper's CFS application tables |
 
 Build with a C++17 compiler:
 

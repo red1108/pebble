@@ -3,3 +3,8 @@
 *.o
 *.dSYM/
 .DS_Store
+__pycache__/
+*.pyc
+/application/.venv/
+/application/public/
+/application/results/

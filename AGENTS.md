@@ -1,6 +1,7 @@
 # Algorithm code
 
-This repository contains the C++ pebbling implementations.
+This repository contains the C++ pebbling implementations and the CFS
+application reproduction code.
 Keep manuscript sources, figures, checkpoints, paper build scripts, and test
 folders out of this repository unless the user asks for them.
 
