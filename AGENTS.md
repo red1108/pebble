@@ -8,7 +8,8 @@ Build only when the user explicitly requests a PDF build, using `python3 build.p
 It writes `../paper/main.pdf` and temporary
 files under `../paper/.build/`, outside this Git repository.
 `kss.cpp`, `sequential.cpp`, and `parallel.cpp` are the active C++ schedulers.
-Shared tree, metric, and `sequential_pebble` code lives in `pebbling_common.hpp`.
+`QuantumComputer` in `quantum_computer.hpp` owns tree state, action checks, and
+metrics. Shared scheduling and CLI helpers live in `pebbling_common.hpp`.
 Run `python3 tests/check.py` for the implementation checks. Put compiled
 binaries in `../paper/.build/`, never in this repository.
 

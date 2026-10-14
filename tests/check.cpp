@@ -18,10 +18,6 @@ namespace parallel {
 #undef main
 }
 
-uint64_t work() {
-    return metrics.place+metrics.unpebble;
-}
-
 // Enumerate every balanced boundary size, independently of the greedy choice.
 uint64_t best_work(int height, int space) {
     if(height==1) return 1;
@@ -48,92 +44,156 @@ uint64_t best_work(int height, int space) {
 }
 
 void check_case(int height, int space) {
-    reset(height, space);
-    kss::kss_algorithm();
-    check_final();
-    uint64_t kss_work = work(), half = 1ULL<<(height-1);
+    QuantumComputer qc(height, space);
+    kss::kss_algorithm(qc);
+    check_final(qc);
+    auto metrics = qc.metrics();
+    uint64_t kss_work = metrics.work(), half = 1ULL<<(height-1);
     assert(metrics.place == (height==1 ? 1 : (2*height-3)*half+1));
     assert(metrics.unpebble == (height==1 ? 0 : height*half-2));
     assert(metrics.peak == (height==1 ? 1 : height+1));
+    assert(metrics.depth == metrics.work()+metrics.measure);
 
-    reset(height, space);
-    sequential::fast_clean(1, h, s, true);
-    check_final();
-    assert(work()<=kss_work);
-    if(height<=12) assert(work()==best_work(height, space));
-    if(space==n) assert(work()==2ULL*n-1);
+    qc = QuantumComputer(height, space);
+    sequential::fast_clean(qc, 1, height, space, true);
+    check_final(qc);
+    metrics = qc.metrics();
+    assert(metrics.work()<=kss_work);
+    if(height<=12) assert(metrics.work()==best_work(height, space));
+    if(space==qc.size()) assert(metrics.work()==2ULL*qc.size()-1);
+    assert(metrics.depth == metrics.work()+metrics.measure);
 
-    reset(height, space);
-    parallel::parallel_algorithm();
-    check_final();
+    qc = QuantumComputer(height, space);
+    parallel::parallel_algorithm(qc);
+    check_final(qc);
+    metrics = qc.metrics();
     assert(metrics.depth>0);
     assert(metrics.place<=metrics.area);
-    assert(metrics.area<=uint64_t(s)*metrics.depth);
-    if(space==n && height<=17) { // Resolve uses full-tree cleanup only through r=16.
+    assert(metrics.area<=uint64_t(space)*metrics.depth);
+    if(space==qc.size() && height<=17) { // Full-tree cleanup through r=16.
         assert(metrics.depth==uint64_t(3*height-2));
-        assert(work()==3ULL*n-2);
+        assert(metrics.work()==3ULL*qc.size()-2);
     }
 }
 
 void check_parallel_pebble(int height, int space) {
-    reset(height, space);
-    parallel::run(parallel::parallel_pebble(1, h, s));
-    assert(metrics.place==uint64_t(n) && metrics.unpebble==0);
-    assert(metrics.live==1 && placed[1]);
-    for(int x=2; x<=n; x++) assert(!placed[x] && is_ghost[x]);
-    assert(metrics.ghost==uint64_t(n-1));
-    assert(metrics.peak<=s);
+    QuantumComputer qc(height, space);
+    parallel::run(qc, parallel::parallel_pebble(1, height, space));
+    const auto& metrics = qc.metrics();
+    assert(metrics.place==uint64_t(qc.size()) && metrics.unpebble==0);
+    assert(metrics.occupied==1 && qc.state(1)==QuantumComputer::State::pebble);
+    for(int x=2; x<=qc.size(); x++) assert(qc.state(x)==QuantumComputer::State::ghost);
+    assert(metrics.measure==uint64_t(qc.size()-1));
+    assert(metrics.peak<=space);
 }
 
 // Check the paper's one-block formulas, including mixed-depth boundaries.
 void check_contracts() {
-    for(int height=2; height<=8; height++) {
-        for(int m=2; m<=(1<<(height-1)); m++) {
+    for(int h=2; h<=8; h++) {
+        for(int m=2; m<=(1<<(h-1)); m++) {
             for(bool rho : {false, true}) {
-                reset(height, (1<<height)-1);
-                sequential::contract(1, h, m, rho);
-                assert(work()==3ULL*(1<<(h-1))+m-2-rho);
+                QuantumComputer qc(h, (1<<h)-1);
+                sequential::contract(qc, 1, h, m, rho);
+                const auto& metrics = qc.metrics();
+                assert(metrics.work()==3ULL*(1<<(h-1))+m-2-rho);
                 assert(metrics.peak==sequential::boundary_space(h, m));
-                assert(metrics.live==rho);
-                assert(placed[1]==rho);
+                assert(metrics.occupied==rho);
+                assert((qc.state(1)==QuantumComputer::State::pebble)==rho);
             }
         }
     }
 }
 
 void check_round_metrics() {
-    reset(3, 4);
-    parallel::run_round({{4}, {}, {}});
-    parallel::run_round({{6}, {4}, {}}); // old and new pebbles both occupy U_t
-    assert(metrics.depth==2 && metrics.area==3 && metrics.peak==2);
-    assert(metrics.live==1);
-    parallel::run_round({{}, {}, {6}}); // ghost-only rounds still take time
-    assert(metrics.depth==3 && metrics.area==4 && metrics.live==0);
-    parallel::run_round({{6}, {}, {}});
-    assert(metrics.exorcise==1);
+    QuantumComputer qc(3, 4);
+    qc.execute({{4}, {}, {}});
+    qc.execute({{6}, {4}, {}}); // old and new pebbles both occupy U_t
+    assert(qc.metrics().depth==2 && qc.metrics().area==3 && qc.metrics().peak==2);
+    assert(qc.metrics().occupied==1);
+    qc.execute({{}, {}, {6}}); // ghost-only rounds still take time
+    assert(qc.metrics().depth==3 && qc.metrics().area==4 && qc.metrics().occupied==0);
+    qc.execute({{6}, {}, {}});
+    assert(qc.metrics().correction==1);
 
-    reset(2, 3);
-    parallel::run_round({{2, 3}, {}, {}});
-    parallel::run_round({{1}, {}, {2, 3}});
-    assert(metrics.peak==3 && metrics.area==5 && metrics.live==1);
+    QuantumComputer small(2, 3);
+    small.execute({{2, 3}, {}, {}});
+    small.execute({{1}, {}, {2, 3}});
+    assert(small.metrics().peak==3 && small.metrics().area==5 && small.metrics().occupied==1);
 }
 
-// The Python runner expects these invalid rounds to fail an assertion.
-void invalid_round(const string& name) {
-    reset(3, 4);
-    if(name=="dependency") parallel::run_round({{2, 4, 5}, {}, {}});
-    else if(name=="conflict") {
-        parallel::run_round({{4, 5}, {}, {}});
-        parallel::run_round({{2}, {4}, {}});
-    } else if(name=="space") {
-        parallel::run_round({{4, 5, 6, 7}, {}, {}});
-        parallel::run_round({{2}, {6}, {}});
-    } else if(name=="ghost") parallel::run_round({{}, {}, {4}});
-    else if(name=="duplicate") parallel::run_round({{4, 4}, {}, {}});
-    else if(name=="unpebble_ghost") {
-        parallel::run_round({{4}, {}, {4}});
-        parallel::run_round({{}, {4}, {}});
+void check_interface() {
+    QuantumComputer qc(2, 3), other(1, 1);
+    assert(!qc.finished() && !other.finished());
+    qc.pebble(vector<int>{2, 3});
+    other.pebble(1);
+    qc.execute({{1}, {}, {2, 3}});
+    assert(!qc.finished()); // ghosts still need correction
+    qc.correction(vector<int>{2, 3});
+    assert(qc.state(2)==QuantumComputer::State::pebble);
+    assert(qc.metrics().place==5 && qc.metrics().correction==2);
+    qc.unpebble(vector<int>{2, 3});
+    check_final(qc);
+    assert(qc.metrics().depth==4 && qc.metrics().area==11 && qc.metrics().work()==7);
+    assert(other.finished() && other.metrics().place==1 && other.metrics().depth==1);
+
+    // Scalar calls and one-element vectors have identical semantics.
+    QuantumComputer scalar(2, 3), batch(2, 3);
+    scalar.pebble(2);
+    scalar.measure(2);
+    scalar.correction(2);
+    scalar.unpebble(2);
+    batch.pebble(vector<int>{2});
+    batch.measure(vector<int>{2});
+    batch.correction(vector<int>{2});
+    batch.unpebble(vector<int>{2});
+    for(const QuantumComputer* computer : {&scalar, &batch}) {
+        const auto& m = computer->metrics();
+        for(int x=1; x<=3; x++) assert(computer->state(x)==QuantumComputer::State::empty);
+        assert(m.place==2 && m.unpebble==1 && m.measure==1 && m.correction==1);
+        assert(m.work()==3 && m.depth==4 && m.area==4 && m.peak==1 && m.occupied==0);
     }
+
+    // A vector measurement releases the whole level in one round.
+    QuantumComputer measured(2, 3);
+    measured.pebble(vector<int>{2, 3});
+    measured.measure(vector<int>{2, 3});
+    measured.pebble(vector<int>{2, 3}); // implicit correction
+    assert(measured.metrics().correction==2 && measured.metrics().depth==3);
+    assert(measured.metrics().area==6 && measured.metrics().occupied==2);
+    measured.execute({{1}, {}, {1, 2, 3}}); // even a new pebble can be measured
+    assert(measured.metrics().occupied==0 && measured.metrics().area==9);
+}
+
+// The Python runner expects these invalid operations to fail an assertion.
+void invalid_round(const string& name) {
+    QuantumComputer qc(3, 4);
+    if(name=="dependency") qc.execute({{2, 4, 5}, {}, {}});
+    else if(name=="conflict") {
+        qc.pebble(vector<int>{4, 5});
+        qc.execute({{2}, {4}, {}});
+    } else if(name=="space") {
+        qc.pebble(vector<int>{4, 5, 6, 7});
+        qc.execute({{2}, {6}, {}});
+    } else if(name=="ghost") qc.measure(4);
+    else if(name=="duplicate") qc.pebble(vector<int>{4, 4});
+    else if(name=="unpebble_ghost") {
+        qc.execute({{4}, {}, {4}});
+        qc.unpebble(4);
+    } else if(name=="correction_empty") qc.correction(4);
+    else if(name=="correction_pebble") {
+        qc.pebble(4);
+        qc.correction(4);
+    } else if(name=="correction_batch") {
+        qc.execute({{4}, {}, {4}});
+        qc.correction(vector<int>{4, 5});
+    } else if(name=="measure_removed") {
+        qc.pebble(4);
+        qc.execute({{}, {4}, {4}});
+    } else if(name=="measure_duplicate") {
+        qc.pebble(4);
+        qc.measure(vector<int>{4, 4});
+    } else if(name=="empty") qc.execute({{}, {}, {}});
+    else if(name=="index") qc.pebble(8);
 }
 
 int main(int argc, char** argv) {
@@ -165,6 +225,7 @@ int main(int argc, char** argv) {
     }
     check_contracts();
     check_round_metrics();
+    check_interface();
     cout << "PASS: " << cases << " height/space cases, all three schedules." << endl;
     cout << "KSS counts, balanced-boundary work, parallel rounds, space, and cleanup checked." << endl;
     return 0;

@@ -15,28 +15,28 @@ int boundary_space(int r, int m) {
     return max(2*m-1, r+m-ceil_log2(m));
 }
 
-vector<pair<int,int>> contract(int x, int r, int m, bool rho) {
+vector<pair<int,int>> contract(QuantumComputer& qc, int x, int r, int m, bool rho) {
     vector<pair<int,int>> F;
     vector<int> top;
     boundary(x, r, m, F, top);
 
     // Taller subtrees first. Their roots stay live during the next calls.
     stable_sort(F.begin(), F.end(), [](auto a, auto b) { return a.second>b.second; });
-    for(auto [v, q] : F) sequential_pebble(v);
-    for(int v : top) pebble(v);
+    for(auto [v, q] : F) sequential_pebble(qc, v);
+    for(int v : top) qc.pebble(v);
     for(int i=(int)top.size()-1; i>=0; i--) {
         if(rho && top[i]==x) continue;
-        unpebble(top[i]);
+        qc.unpebble(top[i]);
     }
-    for(auto [v, q] : F) release(v);
+    for(auto [v, q] : F) release(qc, v);
     return F;
 }
 
-void fast_clean(int x, int r, int b, bool rho) {
-    assert(!placed[x]);
+void fast_clean(QuantumComputer& qc, int x, int r, int b, bool rho) {
+    assert(qc.state(x)!=QuantumComputer::State::pebble);
     if(r==1) {
-        assert(!is_ghost[x]);
-        if(rho) pebble(x);
+        assert(qc.state(x)!=QuantumComputer::State::ghost);
+        if(rho) qc.pebble(x);
         return;
     }
     assert(b >= r+1);
@@ -50,16 +50,18 @@ void fast_clean(int x, int r, int b, bool rho) {
         } else right = mid-1;
     }
 
-    auto F = contract(x, r, m, rho);
-    for(auto [v, q] : F) fast_clean(v, q, b-rho, false);
+    auto F = contract(qc, x, r, m, rho);
+    for(auto [v, q] : F) fast_clean(qc, v, q, b-rho, false);
 }
 
 int main(int argc, char** argv) {
-    if(!read_input(argc, argv)) return 1;
-    fast_clean(1, h, s, true);
-    check_final();
+    int h, s;
+    if(!read_input(argc, argv, h, s)) return 1;
+    QuantumComputer qc(h, s);
+    fast_clean(qc, 1, h, s, true);
+    check_final(qc);
 
     cout << "Sequential Metrics: " << endl;
-    print_metrics();
+    print_metrics(qc);
     return 0;
 }

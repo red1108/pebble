@@ -1,55 +1,10 @@
 #include "pebbling_common.hpp"
 
-// First pebble/unpebble together, then ghost.
-struct Round {
-    vector<int> place, unpebble, ghost;
-};
+using Round = QuantumComputer::Round;
 using Schedule = vector<Round>;
-bool active[1<<max_h];
 
-void claim(int x, vector<int>& used) {
-    assert(!active[x]);
-    active[x] = true;
-    used.push_back(x);
-}
-
-void run_round(const Round& round) {
-    assert(!round.place.empty() || !round.unpebble.empty() || !round.ghost.empty());
-    vector<int> used;
-
-    // All preconditions use the state at the start of the round.
-    for(int x : round.place) {
-        assert(child_ready(x) && !placed[x]);
-        claim(x, used);
-        if(!leaf(x)) {
-            claim(2*x, used);
-            claim(2*x+1, used);
-        }
-    }
-    for(int x : round.unpebble) {
-        assert(child_ready(x) && placed[x]);
-        claim(x, used);
-        if(!leaf(x)) {
-            claim(2*x, used);
-            claim(2*x+1, used);
-        }
-    }
-    for(int x : used) active[x] = false;
-
-    // U_t includes old pebbles, even those unpebbled in this round.
-    int occupied = metrics.live+(int)round.place.size();
-    assert(occupied <= s);
-    metrics.peak = max(metrics.peak, occupied);
-    metrics.area += occupied;
-    metrics.depth++;
-
-    for(int x : round.place) pebble(x);
-    for(int x : round.unpebble) unpebble(x);
-    for(int x : round.ghost) ghost(x);
-}
-
-void run(const Schedule& schedule) {
-    for(const auto& round : schedule) run_round(round);
+void run(QuantumComputer& qc, const Schedule& schedule) {
+    for(const auto& round : schedule) qc.execute(round);
 }
 
 void add_level(vector<int>& out, int x, int d) {
@@ -64,20 +19,20 @@ void append(Schedule& out, Schedule next) {
 void parallelize(Schedule& out, const Schedule& next) {
     out.resize(max(out.size(), next.size()));
     for(size_t t=0; t<next.size(); t++) {
-        for(int x : next[t].place) out[t].place.push_back(x);
+        for(int x : next[t].pebble) out[t].pebble.push_back(x);
         for(int x : next[t].unpebble) out[t].unpebble.push_back(x);
-        for(int x : next[t].ghost) out[t].ghost.push_back(x);
+        for(int x : next[t].measure) out[t].measure.push_back(x);
     }
 }
 
-void depth_first(int x, Schedule& out) {
-    if(!leaf(x)) {
-        depth_first(2*x, out);
-        depth_first(2*x+1, out);
+void depth_first(int x, int r, Schedule& out) {
+    if(r>1) {
+        depth_first(2*x, r-1, out);
+        depth_first(2*x+1, r-1, out);
     }
     Round round;
-    round.place = {x};
-    if(!leaf(x)) round.ghost = {2*x, 2*x+1};
+    round.pebble = {x};
+    if(r>1) round.measure = {2*x, 2*x+1};
     out.push_back(std::move(round));
 }
 
@@ -98,14 +53,14 @@ Schedule parallel_pebble(int x, int r, int b) {
     if((1<<r)-1 <= b) {
         for(int d=r-1; d>=0; d--) {
             Round round;
-            add_level(round.place, x, d);
-            if(d<r-1) add_level(round.ghost, x, d+1);
+            add_level(round.pebble, x, d);
+            if(d<r-1) add_level(round.measure, x, d+1);
             out.push_back(std::move(round));
         }
         return out;
     }
     if(b<16) {
-        depth_first(x, out);
+        depth_first(x, r, out);
         return out;
     }
 
@@ -124,8 +79,8 @@ Schedule parallel_pebble(int x, int r, int b) {
             int first = max(0, (t-ell+2)/2), last = min(jobs-1, t/2);
             for(int j=first; j<=last; j++) {
                 int age = t-2*j, v = (x<<d)+j;
-                add_level(round.place, v, ell-1-age);
-                if(age>0) add_level(round.ghost, v, ell-age);
+                add_level(round.pebble, v, ell-1-age);
+                if(age>0) add_level(round.measure, v, ell-age);
                 if(age==ell-1) completed = v;
             }
             out.push_back(std::move(round));
@@ -138,7 +93,7 @@ Schedule parallel_pebble(int x, int r, int b) {
             int v = (x<<d)+j, local_b = b-(int)roots.size();
             assert(local_b >= ell+1);
             if(local_b>=2*ell) append(out, parallel_pebble(v, ell, local_b));
-            else depth_first(v, out);
+            else depth_first(v, ell, out);
             carry(v, roots, out);
         }
     }
@@ -182,7 +137,7 @@ Schedule contract(int x, int r, int k, int b) {
     }
     for(int d=k-1; d>=0; d--) {
         Round round;
-        add_level(round.place, x, d);
+        add_level(round.pebble, x, d);
         out.push_back(std::move(round));
     }
     for(int d=0; d<k; d++) {
@@ -192,7 +147,7 @@ Schedule contract(int x, int r, int k, int b) {
     }
     Round release;
     if(q==1) add_level(release.unpebble, x, k);
-    else add_level(release.ghost, x, k);
+    else add_level(release.measure, x, k);
     out.push_back(std::move(release));
     return out;
 }
@@ -201,7 +156,7 @@ Schedule clean_small(int x, int r) {
     Schedule out;
     for(int d=r-1; d>=0; d--) {
         Round round;
-        add_level(round.place, x, d);
+        add_level(round.pebble, x, d);
         out.push_back(std::move(round));
     }
     for(int d=0; d<r; d++) {
@@ -212,7 +167,7 @@ Schedule clean_small(int x, int r) {
     return out;
 }
 
-void resolve(vector<int> forest, int r, int b) {
+void resolve(QuantumComputer& qc, vector<int> forest, int r, int b) {
     assert(b >= resolve_space(r));
     while(true) {
         int local_b = resolve_space(r), batch_size = b/local_b;
@@ -228,7 +183,7 @@ void resolve(vector<int> forest, int r, int b) {
                     add_level(next, x, k);
                 }
             }
-            run(batch);
+            run(qc, batch);
         }
         if(r<=16) return;
         forest = std::move(next);
@@ -236,8 +191,9 @@ void resolve(vector<int> forest, int r, int b) {
     }
 }
 
-void parallel_algorithm() {
-    run(parallel_pebble(1, h, s));
+void parallel_algorithm(QuantumComputer& qc) {
+    int h = qc.height(), s = qc.space_limit();
+    run(qc, parallel_pebble(1, h, s));
     if(h==1) return;
 
     int b = s-1, r = h-1;
@@ -246,23 +202,25 @@ void parallel_algorithm() {
         int k = choose_cut(r, b);
         vector<int> next;
         for(int x : forest) {
-            run(contract(x, r, k, b));
+            run(qc, contract(x, r, k, b));
             add_level(next, x, k);
         }
         forest = std::move(next);
         r -= k;
     }
-    resolve(std::move(forest), r, b);
+    resolve(qc, std::move(forest), r, b);
 }
 
 int main(int argc, char** argv) {
-    if(!read_input(argc, argv)) return 1;
-    parallel_algorithm();
-    check_final();
+    int h, s;
+    if(!read_input(argc, argv, h, s)) return 1;
+    QuantumComputer qc(h, s);
+    parallel_algorithm(qc);
+    check_final(qc);
 
     cout << "Parallel Metrics: " << endl;
-    print_metrics();
-    cout << "depth: " << metrics.depth << endl;
-    cout << "cumulative storage: " << metrics.area << endl;
+    print_metrics(qc);
+    cout << "depth: " << qc.metrics().depth << endl;
+    cout << "cumulative storage: " << qc.metrics().area << endl;
     return 0;
 }

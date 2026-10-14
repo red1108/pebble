@@ -15,7 +15,9 @@ for source, name in [('kss.cpp', 'kss'), ('sequential.cpp', 'sequential'),
                    check=True)
 
 subprocess.run([str(build / 'pebble-check')], check=True, cwd=build)
-for name in ['dependency', 'conflict', 'space', 'ghost', 'duplicate', 'unpebble_ghost']:
+for name in ['dependency', 'conflict', 'space', 'ghost', 'duplicate', 'unpebble_ghost',
+             'correction_empty', 'correction_pebble', 'correction_batch',
+             'measure_removed', 'measure_duplicate', 'empty', 'index']:
     result = subprocess.run([str(build / 'pebble-check'), name], capture_output=True, text=True, cwd=build)
     assert result.returncode != 0 and 'assert' in result.stderr.lower(), name
 
