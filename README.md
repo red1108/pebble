@@ -2,8 +2,31 @@
 
 C++ implementations for *Optimal (Parallel) Spooky Pebbling on Binary Trees*.
 
+To compare the sequential algorithms, install Python 3 and a C++17 compiler
+(GCC or Clang), then run:
+
+```sh
+python3 compare.py
+```
+
+The script builds both programs and compares KSS with our sequential block
+cleanup at heights 4, 6, 8, 10, 12, 14, and 16. Each row uses the same budget
+`s = h + 1` and reports work, peak pebbles, and work reduction relative to KSS.
+Work counts placements and uncomputations, excluding measurement.
+
+Choose heights or a different common budget with:
+
+```sh
+python3 compare.py 6 10 14
+python3 compare.py 10 12 --space 32
+```
+
+KSS keeps its original minimum-space schedule when given a larger budget.
+Set `CXX=clang++` or `CXX=g++` to select a compiler. Binaries go in `build/`.
+
 | File | Purpose |
 |---|---|
+| [compare.py](compare.py) | Build and compare the two sequential algorithms |
 | [kss.cpp](kss.cpp) | Sequential KSS algorithm |
 | [sequential.cpp](sequential.cpp) | Our sequential block cleanup |
 | [parallel.cpp](parallel.cpp) | Our parallel schedule |
