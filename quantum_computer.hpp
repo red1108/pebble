@@ -4,6 +4,7 @@
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
+#include <utility>
 #include <vector>
 using namespace std;
 
@@ -40,6 +41,30 @@ public:
         action_.assign(n_+1, 0);
     }
 
+    // Explicit full binary tree: root 1, children numbered after their parent.
+    QuantumComputer(vector<array<int, 2>> tree, int space_limit)
+        : space_limit_(space_limit), n_((int)tree.size()-1), tree_(std::move(tree)) {
+        if(n_<1 || n_>=(1<<max_height) || space_limit<1 || space_limit>n_)
+            throw invalid_argument("invalid tree or space budget");
+        vector<int> parents(n_+1), heights(n_+1, 1);
+        for(int x=n_; x>=1; x--) {
+            auto [left, right] = tree_[x];
+            if(left==0 && right==0) continue;
+            if(left<=x || right<=x || left>n_ || right>n_ || left==right)
+                throw invalid_argument("children must follow their parent");
+            parents[left]++;
+            parents[right]++;
+            heights[x] = 1+max(heights[left], heights[right]);
+        }
+        for(int x=2; x<=n_; x++) {
+            if(parents[x]!=1) throw invalid_argument("each non-root vertex needs one parent");
+        }
+        height_ = heights[1];
+        state_.assign(n_+1, State::empty);
+        active_.assign(n_+1, false);
+        action_.assign(n_+1, 0);
+    }
+
     int height() const { return height_; }
     int size() const { return n_; }
     int space_limit() const { return space_limit_; }
@@ -52,12 +77,12 @@ public:
 
     bool leaf(int ind) const {
         assert(1<=ind && ind<=n_);
-        return ind > n_/2;
+        return tree_.empty() ? ind > n_/2 : tree_[ind][0]==0;
     }
 
     array<int, 2> children(int ind) const {
         assert(!leaf(ind));
-        return {2*ind, 2*ind+1};
+        return tree_.empty() ? array<int, 2>{2*ind, 2*ind+1} : tree_[ind];
     }
 
     // Clear an empty or ghosted block root while its children are available.
@@ -122,11 +147,14 @@ private:
     vector<State> state_;
     Metrics metrics_;
     int height_, space_limit_, n_;
+    vector<array<int, 2>> tree_;
     vector<bool> active_;
     vector<unsigned char> action_; // temporary marks: 1 pebble, 2 unpebble, 3 measure
 
     bool child_ready(int ind) const {
-        return leaf(ind) || (state_[2*ind]==State::pebble && state_[2*ind+1]==State::pebble);
+        if(leaf(ind)) return true;
+        auto [left, right] = children(ind);
+        return state_[left]==State::pebble && state_[right]==State::pebble;
     }
 
     void validate(const Round& round) {
@@ -141,8 +169,9 @@ private:
         auto claim_inputs = [&](int ind) {
             claim(ind);
             if(!leaf(ind)) {
-                claim(2*ind);
-                claim(2*ind+1);
+                auto [left, right] = children(ind);
+                claim(left);
+                claim(right);
             }
         };
 

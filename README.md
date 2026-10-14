@@ -45,26 +45,50 @@ is larger.
 Set `CXX=clang++` or `CXX=g++` to choose a compiler. Compiled programs are
 written to `build/`.
 
-## Parallel spooky pebbling
+## Compare parallel associative reductions
 
-The parallel algorithm evaluates independent subtrees concurrently and batches
-their cleanup within the available space. Depth counts synchronous rounds.
+For an associative operation, the same ordered inputs can be evaluated by a
+left fold or a balanced tree. We compare the retained-output variant of the
+[KMRV A-sequence construction](https://arxiv.org/abs/2510.08432) on the prefix
+path with our balanced-tree schedule. Both runs start empty, retain only the
+final output, and clear every other pebble and ghost.
 
-Measured parallel depths at the minimum space budget `s = h + 1`:
+```sh
+python3 compare_parallel.py
+python3 compare_parallel.py 8 10 12
+```
 
-| Height | Space budget | Parallel depth |
-|---:|---:|---:|
-| 4 | 5 | 45 |
-| 6 | 7 | 269 |
-| 8 | 9 | 1,109 |
-| 10 | 11 | 5,037 |
-| 12 | 13 | 23,381 |
-| 14 | 15 | 102,229 |
-| 16 | 17 | 424,560 |
+For balanced-tree height `h`, there are `N = 2^(h-1)` inputs and the prefix
+path has length `ℓ = N-1`. Both algorithms receive the same total budget
+`s = ceil(2.47 log₂ ℓ)`, including loaded inputs and the output register.
 
-The construction is asymptotically depth-optimal. These are the achieved
-depths of this implementation, not certified exact minima for individual
-heights.
+| Height | Shared space | KMRV depth | Our depth | Depth reduction |
+|---:|---:|---:|---:|---:|
+| 4 | 7 | 22 | 33 | -50.00% |
+| 6 | 13 | 77 | 149 | -93.51% |
+| 8 | 18 | 336 | 453 | -34.82% |
+| 10 | 23 | 1,384 | 1,991 | -43.86% |
+| 12 | 28 | 5,554 | 8,333 | -50.04% |
+| 14 | 33 | 22,836 | 35,858 | -57.02% |
+| 16 | 38 | 93,433 | 151,676 | -62.34% |
+
+Reduction is `100 × (1 − our depth / KMRV depth)`. Negative values mean our
+current implementation is deeper. KMRV is shallower at all heights shown.
+These are measured depths of the implemented schedules, not exact optima
+for the full input-loading model.
+
+The KMRV adapter uses the same `QuantumComputer` actions and space checks as
+the tree implementation. It loads side inputs as needed, measures them after
+use, and clears all input ghosts at the end. Path rounds are split into
+batches if necessary; input loads are prefetched into preceding computation
+rounds when their active sets are disjoint and the space budget permits.
+Every load and final erasure costs one unit of work. The script also reports
+the raw KMRV path depth, `2ℓ−1`, separately from the total depth above, which
+includes input preparation and cleanup.
+
+This comparison assumes associativity and preserves input order. It compares
+two evaluation trees; the general fixed-tree algorithm does not require
+associativity. Supported comparison heights are 4 through 20.
 
 ## Run an individual algorithm
 
@@ -73,16 +97,21 @@ mkdir -p build
 c++ -std=c++17 -O2 kss.cpp -o build/kss
 c++ -std=c++17 -O2 sequential.cpp -o build/sequential
 c++ -std=c++17 -O2 parallel.cpp -o build/parallel
+c++ -std=c++17 -O2 kmrv.cpp -o build/kmrv
 
 ./build/kss 10 11
 ./build/sequential 10 11
-./build/parallel 10 11
+./build/parallel 10 23
+./build/kmrv 10 23
 ```
 
-Each program accepts `[height [space]]`. The defaults are height 10 and the
-minimum feasible budget. Height counts vertex levels, so a complete tree
+The complete-tree programs accept `[height [space]]`, defaulting to height
+10 and the minimum feasible budget. Height counts vertex levels, so a complete tree
 has `n = 2^h - 1` vertices. Supported heights are 1 through 20. For `h >= 2`,
 the budget must satisfy `h + 1 <= s <= n`; a single leaf needs one pebble.
+
+`kmrv` takes the corresponding balanced-tree height; its default space is
+`ceil(2.47 log₂ ℓ)`.
 
 Every run starts with an empty tree and finishes with only the root pebbled
 and no remaining ghosts. Assertions check action legality and cleanup;
@@ -125,9 +154,11 @@ pebble/
 ├── .gitignore
 ├── README.md
 ├── compare.py                    # Build and compare the sequential algorithms
+├── compare_parallel.py           # Compare associative reductions against KMRV
+├── kmrv.cpp                      # Retained-output KMRV construction and input adapter
 ├── kss.cpp                       # Sequential KSS baseline
 ├── parallel.cpp                  # Parallel tree and forest scheduling
-├── pebbling_common.hpp           # Common input/output helpers
+├── pebbling_common.hpp           # Round composition and input/output helpers
 ├── quantum_computer.hpp          # State, action checks, and resource counters
 ├── sequential.cpp                # Balanced-boundary selection
 ├── sequential_schedule.hpp       # Shared traversal, block execution, and cleanup

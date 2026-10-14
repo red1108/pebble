@@ -12,18 +12,37 @@ def run(binary, height, space):
     result = subprocess.run([str(binary), str(height), str(space)],
                             check=True, capture_output=True, text=True)
     fields = {"place", "unpebble", "total work", "peak live"}
+    optional = {"depth", "cumulative storage", "path rounds", "path work", "path peak"}
     metrics = {}
     for line in result.stdout.splitlines():
         key, _, value = line.partition(":")
-        if key in fields:
+        if key in fields | optional:
             metrics[key] = int(value.strip())
-    if metrics.keys() != fields:
+    if not fields <= metrics.keys():
         raise ValueError(f"{binary.name}: missing cost metrics")
     if metrics["total work"] != metrics["place"] + metrics["unpebble"]:
         raise ValueError(f"{binary.name}: inconsistent work count")
     if not 1 <= metrics["peak live"] <= space:
         raise ValueError(f"{binary.name}: invalid peak space")
     return metrics
+
+
+def build_programs(names):
+    compiler = shlex.split(os.environ.get("CXX", "c++"))
+    if not compiler or shutil.which(compiler[0]) is None:
+        raise ValueError("C++ compiler not found; install one or set CXX (e.g. CXX=clang++)")
+
+    repo = Path(__file__).resolve().parent
+    build = repo / "build"
+    build.mkdir(exist_ok=True)
+    binaries = {}
+    for name in names:
+        binary = build / (name + (".exe" if os.name == "nt" else ""))
+        subprocess.run(compiler + ["-std=c++17", "-O2", "-UNDEBUG",
+                                   str(repo / (name + ".cpp")), "-o", str(binary)], check=True)
+        binaries[name] = binary
+
+    return binaries
 
 
 def main():
@@ -44,20 +63,11 @@ def main():
             parser.error(f"height {h} needs a space budget in [{minimum}, {(1 << h)-1}]")
         cases.append((h, s))
 
-    compiler = shlex.split(os.environ.get("CXX", "c++"))
-    if not compiler or shutil.which(compiler[0]) is None:
-        parser.error("C++ compiler not found; install one or set CXX (e.g. CXX=clang++)")
-
-    repo = Path(__file__).resolve().parent
-    build = repo / "build"
-    build.mkdir(exist_ok=True)
-    binaries = {}
     print("Building KSS and our sequential algorithm...", flush=True)
-    for name in ["kss", "sequential"]:
-        binary = build / (name + (".exe" if os.name == "nt" else ""))
-        subprocess.run(compiler + ["-std=c++17", "-O2", "-UNDEBUG",
-                                   str(repo / (name + ".cpp")), "-o", str(binary)], check=True)
-        binaries[name] = binary
+    try:
+        binaries = build_programs(["kss", "sequential"])
+    except ValueError as error:
+        parser.error(str(error))
 
     print("Work = pebble + unpebble; measurement costs no work.")
     print("Both algorithms use the same space budget in each row.")

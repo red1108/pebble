@@ -1,28 +1,7 @@
 #include "pebbling_common.hpp"
 
-using Round = QuantumComputer::Round;
-using Schedule = vector<Round>;
-
-void run(QuantumComputer& qc, const Schedule& schedule) {
-    for(const auto& round : schedule) qc.execute(round);
-}
-
 void add_level(vector<int>& out, int x, int d) {
     for(int v=x<<d; v<(x+1)<<d; v++) out.push_back(v);
-}
-
-void append(Schedule& out, Schedule next) {
-    for(auto& round : next) out.push_back(std::move(round));
-}
-
-// Overlay schedules on disjoint subtrees, one round at a time.
-void parallelize(Schedule& out, const Schedule& next) {
-    out.resize(max(out.size(), next.size()));
-    for(size_t t=0; t<next.size(); t++) {
-        for(int x : next[t].pebble) out[t].pebble.push_back(x);
-        for(int x : next[t].unpebble) out[t].unpebble.push_back(x);
-        for(int x : next[t].measure) out[t].measure.push_back(x);
-    }
 }
 
 void depth_first(int x, int r, Schedule& out) {
