@@ -50,19 +50,17 @@ written to `build/`.
 The parallel algorithm evaluates independent subtrees concurrently and batches
 their cleanup within the available space. Depth counts synchronous rounds.
 
-The table uses the minimum space budget `s = h + 1`. The KSS baseline runs
-one placement or uncomputation per round, with subsequent measurements in
-that round's second phase. Its depth therefore equals its work count.
+Measured parallel depths at the minimum space budget `s = h + 1`:
 
-| Height | KSS depth | Our parallel depth | Depth reduction |
-|---:|---:|---:|---:|
-| 4 | 71 | 45 | 36.62% |
-| 6 | 479 | 269 | 43.84% |
-| 8 | 2,687 | 1,109 | 58.73% |
-| 10 | 13,823 | 5,037 | 63.56% |
-| 12 | 67,583 | 23,381 | 65.40% |
-| 14 | 319,487 | 102,229 | 68.00% |
-| 16 | 1,474,559 | 424,560 | 71.21% |
+| Height | Space budget | Parallel depth |
+|---:|---:|---:|
+| 4 | 5 | 45 |
+| 6 | 7 | 269 |
+| 8 | 9 | 1,109 |
+| 10 | 11 | 5,037 |
+| 12 | 13 | 23,381 |
+| 14 | 15 | 102,229 |
+| 16 | 17 | 424,560 |
 
 The construction is asymptotically depth-optimal. These are the achieved
 depths of this implementation, not certified exact minima for individual
