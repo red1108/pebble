@@ -1,16 +1,17 @@
 # Spooky pebbling on binary trees
 
-Implementations accompanying [*Optimal (Parallel) Spooky Pebbling on Binary
-Trees*](https://arxiv.org/abs/2610.09434) by Mingyu Lee, Sanghyun Lee, and
-Kabgyun Jeong.
+This repository is the implementation of [*Optimal (Parallel) Spooky Pebbling on Binary
+Trees*](https://arxiv.org/abs/2610.09434).
 
-The repository includes the sequential KSS baseline, sequential block cleanup,
-and a parallel schedule for complete binary trees. It also reproduces the
-paper's circuit-cost comparison on CFS RNS point-addition trees.
+The repository includes the sequential [KSS25](https://quantum-journal.org/papers/q-2025-02-18-1636/)
+algorithm as a baseline and compares it with our sequential algorithm based on
+block cleanup. It also provides a parallel schedule for complete binary trees
+and a CFS circuit adapter that reproduces the three CFS comparisons and the
+P-256 circuit-call table.
 
 ## Compare the sequential algorithms
 
-Requirements: Python 3 and a C++17 compiler such as GCC or Clang.
+Requirements: Python 3 and a C++17 or later compiler.
 
 ```sh
 git clone https://github.com/red1108/pebble.git
@@ -18,9 +19,18 @@ cd pebble
 python3 compare.py
 ```
 
-The script builds both sequential programs and compares heights
-`4, 6, 8, 10, 12, 14, 16`. Each row reports work, work reduction relative to
-KSS, and the peak number of pebbles, under a common budget `s = h + 1`.
+Both algorithms use the same budget `s = h + 1`. Work counts placements
+and uncomputations.
+
+| Height | KSS work | Our work | Work reduction |
+|---:|---:|---:|---:|
+| 4 | 71 | 60 | 15.49% |
+| 6 | 479 | 351 | 26.72% |
+| 8 | 2,687 | 1,683 | 37.37% |
+| 10 | 13,823 | 7,654 | 44.63% |
+| 12 | 67,583 | 34,390 | 49.11% |
+| 14 | 319,487 | 149,756 | 53.13% |
+| 16 | 1,474,559 | 648,405 | 56.03% |
 
 To choose heights or a different budget:
 
@@ -29,9 +39,8 @@ python3 compare.py 6 10 14
 python3 compare.py 10 12 --space 32
 ```
 
-For `h = 10` and `s = 11`, KSS uses **13,823** work and block cleanup uses
-**7,654**, a **44.63%** reduction. Both peak at **11** pebbles. KSS follows
-its original minimum-space schedule even when the allowed budget is larger.
+KSS follows its original minimum-space schedule even when the allowed budget
+is larger.
 
 Set `CXX=clang++` or `CXX=g++` to choose a compiler. Compiled programs are
 written to `build/`.
@@ -90,16 +99,30 @@ as the complete-tree implementation.
 
 ## Source layout
 
-| File | Purpose |
-|---|---|
-| [compare.py](compare.py) | Build and compare the sequential algorithms |
-| [kss.cpp](kss.cpp) | Sequential KSS baseline |
-| [sequential.cpp](sequential.cpp) | Balanced-boundary selection for complete trees |
-| [sequential_schedule.hpp](sequential_schedule.hpp) | Shared traversal, block execution, and recursive cleanup |
-| [parallel.cpp](parallel.cpp) | Parallel tree and forest scheduling |
-| [quantum_computer.hpp](quantum_computer.hpp) | Abstract machine state, action checks, and resource counters |
-| [pebbling_common.hpp](pebbling_common.hpp) | Common input/output helpers |
-| [application/](application/README.md) | CFS circuit adapter and reproduction scripts |
+```text
+pebble/
+├── .gitignore
+├── README.md
+├── compare.py                    # Build and compare the sequential algorithms
+├── kss.cpp                       # Sequential KSS baseline
+├── parallel.cpp                  # Parallel tree and forest scheduling
+├── pebbling_common.hpp           # Common input/output helpers
+├── quantum_computer.hpp          # State, action checks, and resource counters
+├── sequential.cpp                # Balanced-boundary selection
+├── sequential_schedule.hpp       # Shared traversal, block execution, and cleanup
+└── application/                  # CFS circuit adapter and reproduction
+    ├── README.md
+    ├── cfs_benchmark.py
+    ├── circuit_model.py
+    ├── cut_planner.py
+    ├── fetch_sources.py
+    ├── reproduce.py
+    ├── requirements.txt
+    ├── schedule.cpp
+    ├── shared_scheduler.py
+    ├── validate_cut_trace.py
+    └── verify_trace.py
+```
 
 ## Citation
 
