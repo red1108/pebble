@@ -1,28 +1,10 @@
 #pragma once
 #include "quantum_computer.hpp"
+#include "sequential_schedule.hpp"
 #include <iostream>
 #include <string>
 #include <utility>
 using namespace std;
-
-inline void release(QuantumComputer& qc, int x) {
-    if(qc.leaf(x)) qc.unpebble(x);
-    else qc.measure(x);
-}
-
-inline void sequential_pebble(QuantumComputer& qc, int x) {
-    if(!qc.leaf(x)) {
-        sequential_pebble(qc, 2*x);
-        sequential_pebble(qc, 2*x+1);
-    }
-
-    qc.pebble(x);
-
-    if(!qc.leaf(x)) {
-        release(qc, 2*x);
-        release(qc, 2*x+1);
-    }
-}
 
 inline int ceil_log2(int x) {
     int k = 0;

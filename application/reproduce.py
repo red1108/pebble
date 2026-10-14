@@ -39,15 +39,13 @@ def reproduce(name, output):
     run("cfs_benchmark.py", "--curve", curve, "--prime", prime,
         "--qM-cofac", 2, "--Mpwp-cofac", 2, "--output", benchmark_path,
         log=output / f"{name}_benchmark.log")
-    print(f"{name}: searching all cuts in the recursive block family...", flush=True)
-    run("run_cut_search.py", benchmark_path, "--output", cut_path,
-        log=output / f"{name}_cut.log")
+    contract = json.loads(benchmark_path.read_text())
+    cut = contract["cut"]
+    cut_path.write_text(json.dumps(cut, indent=2) + "\n")
     print(f"{name}: checking circuits, values, phases, and cleanup...", flush=True)
     run("validate_cut_trace.py", benchmark_path, cut_path, "--output", validation_path,
         log=output / f"{name}_validation.log")
 
-    contract = json.loads(benchmark_path.read_text())
-    cut = json.loads(cut_path.read_text())
     validation = json.loads(validation_path.read_text())
     baseline, ours = validation["baseline_summary"], validation["summary"]
     baseline_trace = contract["rows"][contract["baseline"]]

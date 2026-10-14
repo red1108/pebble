@@ -1,5 +1,6 @@
 #pragma once
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
@@ -52,6 +53,17 @@ public:
     bool leaf(int ind) const {
         assert(1<=ind && ind<=n_);
         return ind > n_/2;
+    }
+
+    array<int, 2> children(int ind) const {
+        assert(!leaf(ind));
+        return {2*ind, 2*ind+1};
+    }
+
+    // Clear an empty or ghosted block root while its children are available.
+    void clear(int ind) {
+        pebble(ind);
+        unpebble(ind);
     }
 
     void pebble(int ind) { execute({{ind}, {}, {}}); }

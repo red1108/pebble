@@ -25,15 +25,16 @@ KSS keeps its original minimum-space schedule when given a larger budget.
 Set `CXX=clang++` or `CXX=g++` to select a compiler. Binaries go in `build/`.
 
 The paper's RNS point-addition application is in [application/](application/README.md).
-Its original circuit scripts and a reproduction runner rebuild the three CFS
-comparisons and print the work/qubit and circuit-call tables. Setup requires
-Python 3.12+ and the pinned Qarton dependency; see that folder's README.
+It reuses the root scheduling functions to rebuild the three CFS comparisons
+and print the work/qubit and circuit-call tables. Setup requires Python 3.12+,
+a C++17 compiler, and the pinned Qarton dependency; see that folder's README.
 
 | File | Purpose |
 |---|---|
 | [compare.py](compare.py) | Build and compare the two sequential algorithms |
 | [kss.cpp](kss.cpp) | Sequential KSS algorithm |
-| [sequential.cpp](sequential.cpp) | Our sequential block cleanup |
+| [sequential.cpp](sequential.cpp) | Choose balanced boundaries for the sequential algorithm |
+| [sequential_schedule.hpp](sequential_schedule.hpp) | Shared scheduling functions used by the examples and application |
 | [parallel.cpp](parallel.cpp) | Our parallel schedule |
 | [quantum_computer.hpp](quantum_computer.hpp) | State, actions, and resource counters |
 | [pebbling_common.hpp](pebbling_common.hpp) | Shared scheduling and CLI helpers |

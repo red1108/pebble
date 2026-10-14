@@ -4,7 +4,8 @@ These are the scripts used for the paper's application section. They compare
 the public CFS schedule with our block cleanup on the same point-addition
 tree, using the same arithmetic circuits, root operation, and space budget.
 
-From the repository root, with Git and Python 3.12 or newer installed:
+From the repository root, with Git, Python 3.12+, and a C++17 compiler
+(GCC or Clang) installed:
 
 ```sh
 python3 -m venv application/.venv
@@ -49,16 +50,29 @@ masks. The cut search is exhaustive within the recursive block template.
 | Script | Purpose |
 |---|---|
 | `cfs_benchmark.py` | Build the public baseline and block schedules; export circuits' costs and traces |
-| `scheduler.py` | Plan blocks with circuit costs and scratch-space accounting |
-| `cut_planner.py`, `run_cut_search.py` | Search mixed-depth boundaries |
+| `../sequential_schedule.hpp` | Shared traversal, block execution, and recursive cleanup |
+| `cut_planner.py` | Choose boundaries using circuit costs and scratch-space limits |
+| `circuit_model.py` | Circuit costs and trace accounting |
+| `shared_scheduler.py`, `schedule.cpp` | Call the root C++ scheduler and translate its operations |
 | `validate_cut_trace.py` | Compile the chosen trace and check values, phases, and space |
 | `verify_trace.py` | Replay traces independently of the planner |
 | `fetch_sources.py` | Fetch and check the public CFS revision |
 | `reproduce.py` | Run the three paper instances and print both tables |
 
-The scheduling and validation scripts are preserved from the original
-application implementation. The circuit loader now uses the local pinned
-checkout instead of paths elsewhere in the author's workspace.
+The application and `sequential.cpp` both execute `sequential_pebble`,
+`contract`, and `fast_clean` from the root `sequential_schedule.hpp`.
+The root program chooses balanced boundaries for a complete, unit-cost tree.
+Here, `cut_planner.py` chooses boundaries on CFS's actual incomplete tree using
+its circuit costs. It calls the shared C++ scheduler to evaluate candidates
+and generate the selected trace; it does not implement a separate traversal
+or block-cleanup routine.
+
+`schedule.cpp` maps scheduling operations to the public circuit calls,
+including direct phase correction when clearing a ghosted block root.
+`QuantumComputer::clear` implements the corresponding unit-cost operation
+as a placement followed by uncomputation. The public CFS implementation
+remains the comparison baseline. `CXX` selects the compiler; the bridge is
+built automatically under `build/`.
 
 Pinned public sources:
 

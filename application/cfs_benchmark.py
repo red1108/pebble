@@ -18,7 +18,9 @@ from qarton.algorithms import PebblingBinaryTree
 from qarton.circuit import AndFanoutResourceReporter, QuantumSimulator, UInt
 from qarton.modular_arithmetic import ModInt
 from rns_addition_tree_run import tree_full_computation
-from scheduler import Cost, Model, Planner, reversible_baseline
+from circuit_model import Cost, Model
+from cut_planner import CutPlanner
+from shared_scheduler import SharedScheduler
 
 
 class ScheduledTree(PebblingBinaryTree):
@@ -173,33 +175,26 @@ def main():
     cap = max(compiled_cap, rows["published_kss"]["peak_qubits"])
     print("Baseline", {k:v for k,v in rows["published_kss"].items() if k != "trace"}, flush=True)
     print("Kernel costs", {str(k): vars(v) for k,v in m.costs.items() if k[1] in ("node","root")}, flush=True)
-    candidates = []
-    for budget in sorted(set([cap] + list(range(m.fixed + 3*m.width, cap + 1, m.width)))):
-        for forced in [None, 1, 2, 3]:
-            try:
-                plan, decisions = Planner(m, budget).run(forced)
-            except ValueError:
-                continue
-            qc = ScheduledTree(**kw, schedule=tuple(plan))
-            result = summarize(qc, m)
-            if result["compiled_qubits"] > compiled_cap:
-                continue
-            name = f"ours_budget{budget}_root{decisions['root_depth']}"
-            result["decisions"] = decisions
-            rows[name] = result
-            candidates.append((result["work"], result["compiled_qubits"], name, qc))
-    best = min(candidates, key=lambda x:x[:3]) if candidates else None
+    with SharedScheduler(m) as scheduler:
+        planner = CutPlanner(m, cap, scheduler)
+        plan, decisions = planner.run()
+        cut_audit = planner.audit()
+    qc = ScheduledTree(**kw, schedule=tuple(plan))
+    row = summarize(qc, m)
+    if row["compiled_qubits"] > compiled_cap:
+        raise ValueError("The shared schedule exceeds the public compiled-qubit cap")
+    row["decisions"] = decisions
+    rows["block_cleanup"] = row
+    best = (row["work"], row["compiled_qubits"], "block_cleanup", qc)
     result = dict(curve=args.curve, prime=args.prime, leaves=len(leaves),
                   qM_cofac=args.qM_cofac, Mpwp_cofac=args.Mpwp_cofac,
                   fixed_qubits=m.fixed, node_width=m.width, cap=cap,
                   compiled_cap=compiled_cap,
                   rns_primes_log2=rns_len, author_lookup_inverse_ccx=0,
                   baseline="published_kss", best=best[2] if best else None, rows=rows)
-    reversible = ScheduledTree(**kw, schedule=tuple(reversible_baseline(m)))
-    revrow = summarize(reversible, m)
-    revrow["within_same_budget"] = revrow["compiled_qubits"] <= compiled_cap and revrow["peak_qubits"] <= cap
-    result["ordinary_reversible_baseline"] = revrow
-    print("Reversible baseline", {k:v for k,v in revrow.items() if k != "trace"}, flush=True)
+    result["cut"] = dict(work=row["work"], peak_qubits=row["peak_qubits"],
+                         trace=plan, decisions=decisions, max_frontier=len(m.leaves),
+                         cut_audit=cut_audit)
     result["model"] = dict(children=m.children, leaves=sorted(m.leaves), root=m.root,
                            costs=[dict(op=op, vertex=v, **vars(c)) for (op,v),c in m.costs.items()])
     if best:
