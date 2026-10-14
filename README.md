@@ -1,46 +1,42 @@
-# Pebbling algorithms
+# Spooky pebbling on binary trees
 
-C++ implementations for *Optimal (Parallel) Spooky Pebbling on Binary Trees*.
+Implementations accompanying [*Optimal (Parallel) Spooky Pebbling on Binary
+Trees*](https://arxiv.org/abs/2610.09434) by Mingyu Lee, Sanghyun Lee, and
+Kabgyun Jeong.
 
-To compare the sequential algorithms, install Python 3 and a C++17 compiler
-(GCC or Clang), then run:
+The repository includes the sequential KSS baseline, sequential block cleanup,
+and a parallel schedule for complete binary trees. It also reproduces the
+paper's circuit-cost comparison on CFS RNS point-addition trees.
+
+## Compare the sequential algorithms
+
+Requirements: Python 3 and a C++17 compiler such as GCC or Clang.
 
 ```sh
+git clone https://github.com/red1108/pebble.git
+cd pebble
 python3 compare.py
 ```
 
-The script builds both programs and compares KSS with our sequential block
-cleanup at heights 4, 6, 8, 10, 12, 14, and 16. Each row uses the same budget
-`s = h + 1` and reports work, peak pebbles, and work reduction relative to KSS.
-Work counts placements and uncomputations, excluding measurement.
+The script builds both sequential programs and compares heights
+`4, 6, 8, 10, 12, 14, 16`. Each row reports work, work reduction relative to
+KSS, and the peak number of pebbles, under a common budget `s = h + 1`.
 
-Choose heights or a different common budget with:
+To choose heights or a different budget:
 
 ```sh
 python3 compare.py 6 10 14
 python3 compare.py 10 12 --space 32
 ```
 
-KSS keeps its original minimum-space schedule when given a larger budget.
-Set `CXX=clang++` or `CXX=g++` to select a compiler. Binaries go in `build/`.
+For `h = 10` and `s = 11`, KSS uses **13,823** work and block cleanup uses
+**7,654**, a **44.63%** reduction. Both peak at **11** pebbles. KSS follows
+its original minimum-space schedule even when the allowed budget is larger.
 
-The paper's RNS point-addition application is in [application/](application/README.md).
-It reuses the root scheduling functions to rebuild the three CFS comparisons
-and print the work/qubit and circuit-call tables. Setup requires Python 3.12+,
-a C++17 compiler, and the pinned Qarton dependency; see that folder's README.
+Set `CXX=clang++` or `CXX=g++` to choose a compiler. Compiled programs are
+written to `build/`.
 
-| File | Purpose |
-|---|---|
-| [compare.py](compare.py) | Build and compare the two sequential algorithms |
-| [kss.cpp](kss.cpp) | Sequential KSS algorithm |
-| [sequential.cpp](sequential.cpp) | Choose balanced boundaries for the sequential algorithm |
-| [sequential_schedule.hpp](sequential_schedule.hpp) | Shared scheduling functions used by the examples and application |
-| [parallel.cpp](parallel.cpp) | Our parallel schedule |
-| [quantum_computer.hpp](quantum_computer.hpp) | State, actions, and resource counters |
-| [pebbling_common.hpp](pebbling_common.hpp) | Shared scheduling and CLI helpers |
-| [application/](application/README.md) | Reproduce the paper's CFS application tables |
-
-Build with a C++17 compiler:
+## Run an individual algorithm
 
 ```sh
 mkdir -p build
@@ -53,15 +49,68 @@ c++ -std=c++17 -O2 parallel.cpp -o build/parallel
 ./build/parallel 10 11
 ```
 
-Arguments are `[height [space]]`, defaulting to height 10 and the minimum
-space budget. The complete tree has `n = 2^h - 1` vertices. Heights 1 through
-20 are supported; for `h >= 2`, use `h + 1 <= space <= n`. A leaf needs one
-pebble. Each schedule finishes with only the root pebbled and no ghosts.
+Each program accepts `[height [space]]`. The defaults are height 10 and the
+minimum feasible budget. Height counts vertex levels, so a complete tree
+has `n = 2^h - 1` vertices. Supported heights are 1 through 20. For `h >= 2`,
+the budget must satisfy `h + 1 <= s <= n`; a single leaf needs one pebble.
 
-`QuantumComputer` accepts scalar actions, vector actions, and mixed rounds.
-Work counts placements and uncomputations. Measurement creates a ghost;
-correction recomputes it and leaves a pebble. Parallel depth counts rounds,
-and space includes all registers occupied during each round. The program
-simulates the schedule rather than CPU multithreading.
+Every run starts with an empty tree and finishes with only the root pebbled
+and no remaining ghosts. Assertions check action legality and cleanup;
+compile without `-DNDEBUG` to keep these checks enabled.
 
-Assertions check action legality and cleanup, so compile without `-DNDEBUG`.
+## Cost model
+
+- **Work:** placements plus uncomputations. Measurement creates a ghost and
+  contributes no work. Recomputing a ghost also corrects its phase.
+- **Space:** the peak number of occupied registers, including leaves and the
+  retained root. Each pebble occupies one register in the tree examples.
+- **Parallel depth:** synchronous rounds. Computations and uncomputations in
+  a round require disjoint active sets; measurements follow in a second phase.
+- **Cumulative storage:** the sum of occupied registers over rounds. Round
+  occupancy includes both registers present at its start and newly placed
+  pebbles, including values uncomputed or measured during that round.
+
+The parallel program simulates the paper's execution model. Its reported
+depth is a schedule cost, not elapsed CPU time.
+
+## Reproduce the circuit application
+
+The [application guide](application/README.md) explains how to rebuild the
+three CFS comparisons and the P-256 circuit-call table. This requires
+Python 3.12+, Git, a C++17 compiler, and the pinned Python dependencies.
+After setup, run:
+
+```sh
+python application/reproduce.py
+```
+
+The application uses circuit-specific gate and qubit costs. Its traversal,
+block execution, and recursive cleanup reuse the same C++ scheduling functions
+as the complete-tree implementation.
+
+## Source layout
+
+| File | Purpose |
+|---|---|
+| [compare.py](compare.py) | Build and compare the sequential algorithms |
+| [kss.cpp](kss.cpp) | Sequential KSS baseline |
+| [sequential.cpp](sequential.cpp) | Balanced-boundary selection for complete trees |
+| [sequential_schedule.hpp](sequential_schedule.hpp) | Shared traversal, block execution, and recursive cleanup |
+| [parallel.cpp](parallel.cpp) | Parallel tree and forest scheduling |
+| [quantum_computer.hpp](quantum_computer.hpp) | Abstract machine state, action checks, and resource counters |
+| [pebbling_common.hpp](pebbling_common.hpp) | Common input/output helpers |
+| [application/](application/README.md) | CFS circuit adapter and reproduction scripts |
+
+## Citation
+
+```bibtex
+@misc{lee2026spookypebbling,
+  title         = {Optimal (Parallel) Spooky Pebbling on Binary Trees},
+  author        = {Mingyu Lee and Sanghyun Lee and Kabgyun Jeong},
+  year          = {2026},
+  eprint        = {2610.09434},
+  archivePrefix = {arXiv},
+  primaryClass  = {cs.CC},
+  url           = {https://arxiv.org/abs/2610.09434}
+}
+```
