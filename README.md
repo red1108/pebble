@@ -62,43 +62,47 @@ For balanced-tree height `h`, there are `N = 2^(h-1)` inputs and the prefix
 path has length `ℓ = N-1`. Both algorithms receive the same total budget
 `s = ceil(2.47 log₂ ℓ)`, including loaded inputs and the output register.
 
-| Height | Shared space | Packed KMRV | Paper tree | Optimized tree | Depth reduction |
-|---:|---:|---:|---:|---:|---:|
-| 4 | 7 | 20 | 33 | 20 | 0.00% |
-| 6 | 13 | 75 | 149 | 80 | -6.67% |
-| 8 | 18 | 316 | 453 | 278 | 12.03% |
-| 10 | 23 | 1,289 | 1,991 | 1,052 | 18.39% |
-| 12 | 28 | 5,153 | 8,333 | 4,514 | 12.40% |
-| 14 | 33 | 20,976 | 35,858 | 14,020 | 33.16% |
-| 16 | 38 | 85,028 | 151,676 | 58,891 | 30.74% |
+| Height | Shared space | Packed KMRV depth | Our depth | Depth reduction |
+|---:|---:|---:|---:|---:|
+| 4 | 7 | 20 | 25 | -25.00% |
+| 6 | 13 | 75 | 85 | -13.33% |
+| 8 | 18 | 316 | 362 | -14.56% |
+| 10 | 23 | 1,289 | 1,394 | -8.15% |
+| 12 | 28 | 5,153 | 4,239 | 17.74% |
+| 14 | 33 | 20,976 | 16,227 | 22.64% |
+| 16 | 38 | 85,028 | 60,404 | 28.96% |
 
-Reduction is `100 × (1 − optimized tree depth / packed KMRV depth)`.
-Negative values mean the optimized tree is deeper. These are measured
-schedule depths; neither implementation searches for a global optimum.
+Reduction is `100 × (1 − our depth / packed KMRV depth)`. Negative values
+mean our schedule is deeper. The script also reports work and actual peak
+space. At height 16, our schedule uses 433,627 operations and KMRV uses
+554,813, both within the same 38-register budget.
 
-`parallel.cpp` keeps the paper's schedule. The separate
-`parallel_optimized.cpp` chooses block cuts by estimated depth before packing.
-At each boundary batch it subtracts the roots already retained, starts the
-maximum number of subtrees whose minimum workspaces fit, and divides the
-remaining workspace among them. Independent cleanup subtrees are batched in
-the same way. Extra space can therefore be used inside each subtree as well
-as to run more subtrees at once. When the whole tree fits, it computes all
-levels and uncomputes every level except the root directly.
+`parallel.cpp` implements Algorithm 5 of the revised manuscript, using the
+shared routines in `parallel_schedule.hpp`. The schedule uses fixed rules:
 
-The optimized tree and KMRV both use `round_packing.hpp`. It moves compatible
-actions from the next round into the current round, including partial
-batches. Every computation and uncomputation still uses inputs present at
-the start of the round, active sets remain disjoint, and transient space
-includes values removed during that round. The pass preserves action counts.
+- Process one cleanup block per subtree, then collect the boundary subtrees
+  and divide the workspace again. Choose the largest feasible cut at each stage.
+- Prepare boundary roots in batches using the space left by roots already retained.
+- Compute levelwise when the simultaneous old and new levels fit. Otherwise
+  use the pipeline width permitted by its space bound; recursive fallback
+  calls run both children together whenever their minimum workspaces fit.
 
-Changing cuts and batching can trade more work for less depth. At height 16,
-the paper tree uses 384,475 operations, the optimized tree uses 562,611, and
-KMRV uses 554,813. The script reports work and actual peak space for all three.
+The manuscript algorithm uses no depth search or packing pass. Its work and
+depth bounds are asymptotic; the table reports the costs of these specific schedules.
+KMRV retains its packing pass, so the comparison uses the stronger packed baseline.
+
+The separate `parallel_optimized.cpp` is an experimental variant. It uses
+memoized cut selection, fixed batching, and greedy packing. To include it
+as an additional column without changing the main comparison:
+
+```sh
+python3 compare_parallel.py 10 12 16 --experimental
+```
 
 The KMRV adapter uses the same `QuantumComputer` actions and space checks as
 the tree implementation. It loads side inputs as needed, measures them after
 use, and clears all input ghosts at the end. Path rounds are split into
-batches if necessary, then the shared packing pass combines compatible actions.
+batches if necessary, then its packing pass combines compatible actions.
 Every load and final erasure costs one unit of work. The script also reports
 the raw KMRV path depth, `2ℓ−1`, separately from the total depth above, which
 includes input preparation and cleanup.
@@ -176,10 +180,10 @@ pebble/
 ├── compare_parallel.py           # Compare associative reductions against KMRV
 ├── kmrv.cpp                      # Retained-output KMRV construction and input adapter
 ├── kss.cpp                       # Sequential KSS baseline
-├── parallel.cpp                  # Original parallel schedule from the paper
-├── parallel_optimized.cpp        # Space-aware batching and packed execution
-├── parallel_schedule.hpp         # Paper schedule and shared tree helpers
-├── round_packing.hpp             # Shared action packing for KMRV and optimized tree
+├── parallel.cpp                  # Staged parallel algorithm from the revised manuscript
+├── parallel_optimized.cpp        # Experimental cut search and packed execution
+├── parallel_schedule.hpp         # ParallelPebble, block cleanup, and forest stages
+├── round_packing.hpp             # Packing for KMRV and the experimental tree variant
 ├── pebbling_common.hpp           # Round composition and input/output helpers
 ├── quantum_computer.hpp          # State, action checks, and resource counters
 ├── sequential.cpp                # Balanced-boundary selection

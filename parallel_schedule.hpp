@@ -5,15 +5,24 @@ inline void add_level(vector<int>& out, int x, int d) {
     for(int v=x<<d; v<(x+1)<<d; v++) out.push_back(v);
 }
 
-inline void depth_first(int x, int r, Schedule& out) {
-    if(r>1) {
-        depth_first(2*x, r-1, out);
-        depth_first(2*x+1, r-1, out);
+inline int minimum_space(int r) {
+    return r==1 ? 1 : r+1;
+}
+
+// A fixed recursive fallback: run both children together when their budgets fit.
+inline Schedule recursive_pebble(int x, int r, int b) {
+    assert(b>=minimum_space(r));
+    if(r==1) return {{{x}, {}, {}}};
+    Schedule out;
+    if(b>=2*minimum_space(r-1)) {
+        out = recursive_pebble(2*x, r-1, b/2);
+        parallelize(out, recursive_pebble(2*x+1, r-1, b/2));
+    } else {
+        out = recursive_pebble(2*x, r-1, b);
+        append(out, recursive_pebble(2*x+1, r-1, b-1));
     }
-    Round round;
-    round.pebble = {x};
-    if(r>1) round.measure = {2*x, 2*x+1};
-    out.push_back(std::move(round));
+    out.push_back({{x}, {}, {2*x, 2*x+1}});
+    return out;
 }
 
 // Combine adjacent completed roots, like carries in a binary counter.
@@ -30,7 +39,7 @@ inline void carry(int x, vector<int>& roots, Schedule& out) {
 inline Schedule parallel_pebble(int x, int r, int b) {
     assert(r>=1 && b>=(r==1 ? 1 : r+1));
     Schedule out;
-    if((1<<r)-1 <= b) {
+    if(r==1 || 3*(1<<(r-2))<=b) {
         for(int d=r-1; d>=0; d--) {
             Round round;
             add_level(round.pebble, x, d);
@@ -39,19 +48,18 @@ inline Schedule parallel_pebble(int x, int r, int b) {
         }
         return out;
     }
-    if(b<16) {
-        depth_first(x, r, out);
-        return out;
-    }
+    if(b<16) return recursive_pebble(x, r, b);
 
     vector<int> roots;
     if(b>=2*r) {
         int p = 1, ell = 1;
-        while(2*p<=b/8) {
+        // Largest dyadic width satisfying the pipeline's space bound.
+        while(ell+1<r && 4*p+(r-ell-1)+2<=b) {
             p *= 2;
             ell++;
         }
         int d = r-ell, jobs = 1<<d;
+        assert(2*p+d+2<=b);
         // Start one bottom subtree every two advancement rounds.
         for(int t=0; t<=2*(jobs-1)+ell-1; t++) {
             Round round;
@@ -73,7 +81,7 @@ inline Schedule parallel_pebble(int x, int r, int b) {
             int v = (x<<d)+j, local_b = b-(int)roots.size();
             assert(local_b >= ell+1);
             if(local_b>=2*ell) append(out, parallel_pebble(v, ell, local_b));
-            else depth_first(v, ell, out);
+            else append(out, recursive_pebble(v, ell, local_b));
             carry(v, roots, out);
         }
     }
@@ -81,8 +89,8 @@ inline Schedule parallel_pebble(int x, int r, int b) {
     return out;
 }
 
-inline int resolve_space(int r) {
-    return min((1<<r)-1, (16*(1<<r)+r-1)/r); // p(r)
+inline int stage_space(int r) {
+    return r==1 ? 1 : max(r+1, ((1<<r)+r-1)/r); // p(r)
 }
 
 inline int choose_cut(int r, int b) {
@@ -98,22 +106,15 @@ inline int choose_cut(int r, int b) {
 inline Schedule contract(int x, int r, int k, int b) {
     int m = 1<<k, q = r-k;
     assert(q>=1 && m+q<=b && 2*m-1<=b);
-    int batch_size, local_b;
-    if(m*(q+1)<=b) {
-        batch_size = m;
-        local_b = b/m;
-    } else {
-        batch_size = (b-m+1)/(q+1);
-        local_b = q+1;
-    }
-    assert(batch_size>0);
-
     Schedule out;
-    for(int first=0; first<m; first+=batch_size) {
+    for(int first=0; first<m;) {
+        int batch_size = min(m-first, (b-first)/minimum_space(q));
+        int local_b = (b-first)/batch_size;
         Schedule batch;
         for(int j=first; j<min(m, first+batch_size); j++)
             parallelize(batch, parallel_pebble((x<<k)+j, q, local_b));
         append(out, std::move(batch));
+        first += batch_size;
     }
     for(int d=k-1; d>=0; d--) {
         Round round;
@@ -147,30 +148,6 @@ inline Schedule clean_small(int x, int r) {
     return out;
 }
 
-inline void resolve(QuantumComputer& qc, vector<int> forest, int r, int b) {
-    assert(b >= resolve_space(r));
-    while(true) {
-        int local_b = resolve_space(r), batch_size = b/local_b;
-        int q = r>16 ? ceil_log2(r)+2 : 0, k = r-q;
-        vector<int> next;
-        for(int first=0; first<(int)forest.size(); first+=batch_size) {
-            Schedule batch;
-            for(int i=first; i<min((int)forest.size(), first+batch_size); i++) {
-                int x = forest[i];
-                if(r<=16) parallelize(batch, clean_small(x, r));
-                else {
-                    parallelize(batch, contract(x, r, k, local_b));
-                    add_level(next, x, k);
-                }
-            }
-            run(qc, batch);
-        }
-        if(r<=16) return;
-        forest = std::move(next);
-        r = q;
-    }
-}
-
 inline void parallel_algorithm(QuantumComputer& qc) {
     int h = qc.height(), s = qc.space_limit();
     run(qc, parallel_pebble(1, h, s));
@@ -178,15 +155,26 @@ inline void parallel_algorithm(QuantumComputer& qc) {
 
     int b = s-1, r = h-1;
     vector<int> forest = {2, 3};
-    while(resolve_space(r)>b) {
-        int k = choose_cut(r, b);
+    while(true) {
+        int batch_size = min((int)forest.size(), max(1, b/stage_space(r)));
+        int local_b = b/batch_size;
+        bool terminal = (1<<r)-1<=local_b;
+        int k = terminal ? 0 : choose_cut(r, local_b);
         vector<int> next;
-        for(int x : forest) {
-            run(qc, contract(x, r, k, b));
-            add_level(next, x, k);
+        for(int first=0; first<(int)forest.size(); first+=batch_size) {
+            Schedule batch;
+            for(int i=first; i<min((int)forest.size(), first+batch_size); i++) {
+                int x = forest[i];
+                if(terminal) parallelize(batch, clean_small(x, r));
+                else {
+                    parallelize(batch, contract(x, r, k, local_b));
+                    add_level(next, x, k);
+                }
+            }
+            run(qc, batch);
         }
+        if(terminal) return;
         forest = std::move(next);
         r -= k;
     }
-    resolve(qc, std::move(forest), r, b);
 }
