@@ -64,28 +64,32 @@ path has length `ℓ = N-1`. Both algorithms receive the same total budget
 
 | Height | Shared space | Packed KMRV depth | Our depth | Depth reduction |
 |---:|---:|---:|---:|---:|
-| 4 | 7 | 20 | 25 | -25.00% |
-| 6 | 13 | 75 | 85 | -13.33% |
-| 8 | 18 | 316 | 362 | -14.56% |
-| 10 | 23 | 1,289 | 1,394 | -8.15% |
-| 12 | 28 | 5,153 | 4,239 | 17.74% |
-| 14 | 33 | 20,976 | 16,227 | 22.64% |
-| 16 | 38 | 85,028 | 60,404 | 28.96% |
+| 4 | 7 | 20 | 24 | -20.00% |
+| 6 | 13 | 75 | 78 | -4.00% |
+| 8 | 18 | 316 | 290 | 8.23% |
+| 10 | 23 | 1,289 | 1,041 | 19.24% |
+| 12 | 28 | 5,153 | 3,391 | 34.19% |
+| 14 | 33 | 20,976 | 11,653 | 44.45% |
+| 16 | 38 | 85,028 | 41,215 | 51.53% |
 
 Reduction is `100 × (1 − our depth / packed KMRV depth)`. Negative values
 mean our schedule is deeper. The script also reports work and actual peak
 space. At height 16, our schedule uses 433,627 operations and KMRV uses
 554,813, both within the same 38-register budget.
 
-`parallel.cpp` implements Algorithm 5 of the revised manuscript, using the
-shared routines in `parallel_schedule.hpp`. The schedule uses fixed rules:
+`parallel.cpp` implements the parallel tree algorithm in the revised
+manuscript, using the shared routines in `parallel_schedule.hpp`. Its root
+preparation is Algorithm 5, and the complete cleanup is Algorithm 6.
+arXiv v1 uses the earlier root-preparation routine. The current schedule
+uses fixed rules:
 
 - Process one cleanup block per subtree, then collect the boundary subtrees
   and divide the workspace again. Choose the largest feasible cut at each stage.
 - Prepare boundary roots in batches using the space left by roots already retained.
-- Compute levelwise when the simultaneous old and new levels fit. Otherwise
-  use the pipeline width permitted by its space bound; recursive fallback
-  calls run both children together whenever their minimum workspaces fit.
+- Prepare each root with one repeated rule: select the leftmost ready sibling
+  pairs, compute their parents and new leaves together, then measure the children.
+  With `f` free registers and `m` selected parents, read at most
+  `min(f-m, floor(2*(f+m)/3))` new leaves. This leaves space for their parents.
 
 The manuscript algorithm uses no depth search or packing pass. Its work and
 depth bounds are asymptotic; the table reports the costs of these specific schedules.

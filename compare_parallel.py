@@ -27,7 +27,7 @@ def main():
         parser.error(str(error))
     print("N = 2^(h-1) inputs; path length l = N-1; space = ceil(2.47 log2(l)).")
     print("Same associative operation, charged input loads, and complete cleanup; only the output remains.")
-    print("Our schedule follows Algorithm 5: fixed rules, no depth search or packing pass.")
+    print("Our schedule follows the manuscript's forest-stage algorithm: fixed rules, no depth search or packing pass.")
     print("KMRV total includes input preparation, cleanup, and its packing pass.")
     print("Reduction compares the manuscript algorithm with packed KMRV.\n")
     header = (f"{'h':>3} {'inputs':>8} {'space':>6} {'KMRV path':>11} {'KMRV total':>12} "

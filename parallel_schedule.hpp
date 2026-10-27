@@ -1,5 +1,6 @@
 #pragma once
 #include "pebbling_common.hpp"
+#include <set>
 
 inline void add_level(vector<int>& out, int x, int d) {
     for(int v=x<<d; v<(x+1)<<d; v++) out.push_back(v);
@@ -9,83 +10,54 @@ inline int minimum_space(int r) {
     return r==1 ? 1 : r+1;
 }
 
-// A fixed recursive fallback: run both children together when their budgets fit.
-inline Schedule recursive_pebble(int x, int r, int b) {
-    assert(b>=minimum_space(r));
-    if(r==1) return {{{x}, {}, {}}};
+// Prepare the root by merging ready siblings and reading leaves from the left.
+inline Schedule parallel_pebble(int x, int h, int b) {
+    assert(h>=1 && b>=minimum_space(h));
+    if(h==1) return {{{x}, {}, {}}};
+
+    int next = 1<<(h-1), end = 1<<h, occupied = 0;
+    vector<bool> placed(end); // local heap indices; initial ghosts need no space
+    set<pair<int, int>> ready; // leftmost leaf below the parent, parent index
     Schedule out;
-    if(b>=2*minimum_space(r-1)) {
-        out = recursive_pebble(2*x, r-1, b/2);
-        parallelize(out, recursive_pebble(2*x+1, r-1, b/2));
-    } else {
-        out = recursive_pebble(2*x, r-1, b);
-        append(out, recursive_pebble(2*x+1, r-1, b-1));
-    }
-    out.push_back({{x}, {}, {2*x, 2*x+1}});
-    return out;
-}
+    auto tree_index = [&](int v) {
+        int d = 31-__builtin_clz(v);
+        return (x<<d)+v-(1<<d);
+    };
 
-// Combine adjacent completed roots, like carries in a binary counter.
-inline void carry(int x, vector<int>& roots, Schedule& out) {
-    while(!roots.empty() && roots.back()%2==0 && roots.back()+1==x) {
-        int left = roots.back();
-        roots.pop_back();
-        out.push_back({{x/2}, {}, {left, x}});
-        x /= 2;
-    }
-    roots.push_back(x);
-}
+    while(!placed[1]) {
+        int free = b-occupied;
+        int count = min((int)ready.size(), free);
+        vector<int> parents;
+        for(int i=0; i<count; i++) {
+            parents.push_back(ready.begin()->second);
+            ready.erase(ready.begin());
+        }
 
-inline Schedule parallel_pebble(int x, int r, int b) {
-    assert(r>=1 && b>=(r==1 ? 1 : r+1));
-    Schedule out;
-    if(r==1 || 3*(1<<(r-2))<=b) {
-        for(int d=r-1; d>=0; d--) {
-            Round round;
-            add_level(round.pebble, x, d);
-            if(d<r-1) add_level(round.measure, x, d+1);
-            out.push_back(std::move(round));
-        }
-        return out;
-    }
-    if(b<16) return recursive_pebble(x, r, b);
+        // Keep space for the parents of the newly read leaves.
+        int leaves = min({end-next, free-count, 2*(free+count)/3});
+        vector<int> added = parents;
+        for(int i=0; i<leaves; i++) added.push_back(next++);
+        assert(!added.empty() && occupied+(int)added.size()<=b);
 
-    vector<int> roots;
-    if(b>=2*r) {
-        int p = 1, ell = 1;
-        // Largest dyadic width satisfying the pipeline's space bound.
-        while(ell+1<r && 4*p+(r-ell-1)+2<=b) {
-            p *= 2;
-            ell++;
+        Round round;
+        for(int v : added) {
+            placed[v] = true;
+            round.pebble.push_back(tree_index(v));
         }
-        int d = r-ell, jobs = 1<<d;
-        assert(2*p+d+2<=b);
-        // Start one bottom subtree every two advancement rounds.
-        for(int t=0; t<=2*(jobs-1)+ell-1; t++) {
-            Round round;
-            int completed = -1;
-            int first = max(0, (t-ell+2)/2), last = min(jobs-1, t/2);
-            for(int j=first; j<=last; j++) {
-                int age = t-2*j, v = (x<<d)+j;
-                add_level(round.pebble, v, ell-1-age);
-                if(age>0) add_level(round.measure, v, ell-age);
-                if(age==ell-1) completed = v;
-            }
-            out.push_back(std::move(round));
-            // Unfinished jobs wait during these carry rounds.
-            if(completed!=-1) carry(completed, roots, out);
+        for(int v : parents) {
+            placed[2*v] = placed[2*v+1] = false;
+            round.measure.push_back(tree_index(2*v));
+            round.measure.push_back(tree_index(2*v+1));
         }
-    } else {
-        int ell = r/4, d = r-ell;
-        for(int j=0; j<(1<<d); j++) {
-            int v = (x<<d)+j, local_b = b-(int)roots.size();
-            assert(local_b >= ell+1);
-            if(local_b>=2*ell) append(out, parallel_pebble(v, ell, local_b));
-            else append(out, recursive_pebble(v, ell, local_b));
-            carry(v, roots, out);
+        for(int v : added) {
+            if(v==1 || !placed[v^1]) continue;
+            int p = v/2, d = 31-__builtin_clz(p);
+            ready.insert({p<<(h-1-d), p});
         }
+        occupied += leaves-count;
+        out.push_back(std::move(round));
     }
-    assert(roots.size()==1 && roots[0]==x);
+    assert(occupied==1 && next==end);
     return out;
 }
 
