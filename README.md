@@ -162,7 +162,8 @@ depth is a schedule cost, not elapsed CPU time.
 ## Reproduce the circuit application
 
 The [application guide](application/README.md) explains how to rebuild the
-three CFS comparisons and the P-256 circuit-call table. This requires
+three CFS comparisons, including the current parallel algorithm and its
+circuit-call depths. This requires
 Python 3.12+, Git, a C++17 compiler, and the pinned Python dependencies.
 After setup, run:
 
@@ -170,9 +171,12 @@ After setup, run:
 python application/reproduce.py
 ```
 
-The application uses circuit-specific gate and qubit costs. Its traversal,
-block execution, and recursive cleanup reuse the same C++ scheduling functions
-as the complete-tree implementation.
+The application uses circuit-specific gate and qubit costs. Both the sequential
+and parallel comparisons reuse the root C++ scheduling functions. The parallel
+adapter preserves the actual CFS tree and splits generated rounds to account
+for simultaneous circuit scratch. The application guide also reports stronger
+CFS reference retimings, so the depth comparison includes an already parallelized
+baseline.
 
 ## Source layout
 
@@ -195,14 +199,20 @@ pebble/
 └── application/                  # CFS circuit adapter and reproduction
     ├── README.md
     ├── cfs_benchmark.py
+    ├── cfs_reference_batches.json
     ├── circuit_model.py
+    ├── compare_depth.py           # Optional CP-SAT reference search
     ├── cut_planner.py
     ├── fetch_sources.py
+    ├── parallel.cpp
+    ├── parallel_adapter.py
+    ├── reference_depth.py
     ├── reproduce.py
     ├── requirements.txt
     ├── schedule.cpp
     ├── shared_scheduler.py
     ├── validate_cut_trace.py
+    ├── validate_parallel_trace.py
     └── verify_trace.py
 ```
 

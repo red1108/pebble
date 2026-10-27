@@ -12,7 +12,7 @@ from pathlib import Path
 import random
 
 
-def verify(data, row, seed=0):
+def verify(data, row, seed=0, compiled_cap=None):
     spec = data["model"]
     graph, leaves, root = spec["children"], set(spec["leaves"]), spec["root"]
     cost = {(r["op"], r["vertex"]): r for r in spec["costs"]}
@@ -58,7 +58,8 @@ def verify(data, row, seed=0):
     assert not values and not ghosts and not phase and root_calls == 1
     assert work == row["work"] and peak == row["peak_qubits"]
     assert counts == row["counts"] and live_peak == row["peak_live"]
-    assert peak <= data["cap"] and row["compiled_qubits"] <= data["compiled_cap"]
+    limit = data["compiled_cap"] if compiled_cap is None else compiled_cap
+    assert peak <= data["cap"] and row["compiled_qubits"] <= limit
     # Conservative alternative: charge inverse lookups equal to forward lookups.
     inverse_upper = sum(cost["P", v]["work"] for op, v in row["trace"] if op == "U" and v in leaves)
     return dict(work=work, conservative_qubits=peak, compiled_qubits=row["compiled_qubits"],
@@ -76,7 +77,8 @@ def main():
         checked = {}
         for name, row in data["rows"].items():
             for seed in range(32):
-                checked[name] = verify(data, row, seed)
+                checked[name] = verify(data, row, seed,
+                                       compiled_cap=data['cap'] if 'parallel' in row else None)
         out[file] = dict(rows=checked, parity_mask_trials_per_trace=32)
     Path(args.output).write_text(json.dumps(out, indent=2) + "\n")
     print(json.dumps(out, indent=2))

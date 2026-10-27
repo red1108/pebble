@@ -21,6 +21,7 @@ from rns_addition_tree_run import tree_full_computation
 from circuit_model import Cost, Model
 from cut_planner import CutPlanner
 from shared_scheduler import SharedScheduler
+from parallel_adapter import schedule as parallel_schedule
 
 
 class ScheduledTree(PebblingBinaryTree):
@@ -185,6 +186,16 @@ def main():
         raise ValueError("The shared schedule exceeds the public compiled-qubit cap")
     row["decisions"] = decisions
     rows["block_cleanup"] = row
+    rounds, adaptation = parallel_schedule(m, cap)
+    parallel = m.check_rounds(rounds, cap)
+    parallel_qc = ScheduledTree(**kw, schedule=tuple(parallel['trace']))
+    parallel_row = summarize(parallel_qc, m)
+    if parallel_row['compiled_qubits'] > cap:
+        raise ValueError('The parallel circuit exceeds the shared workspace budget')
+    parallel_row['parallel'] = {k:v for k,v in parallel.items() if k != 'trace'}
+    parallel_row['rounds'] = rounds
+    parallel_row['adaptation'] = adaptation
+    rows['manuscript_parallel'] = parallel_row
     best = (row["work"], row["compiled_qubits"], "block_cleanup", qc)
     result = dict(curve=args.curve, prime=args.prime, leaves=len(leaves),
                   qM_cofac=args.qM_cofac, Mpwp_cofac=args.Mpwp_cofac,
@@ -201,14 +212,14 @@ def main():
         print("Best", best[:3], "improvement", 1-best[0]/rows["published_kss"]["work"], flush=True)
     if args.trials:
         result["basis_checks"] = {}
-        for name, qc in [("published_kss", native)] + ([(best[2], best[3])] if best else []):
+        for name, qc in [("published_kss", native), ("block_cleanup", best[3]), ("manuscript_parallel", parallel_qc)]:
             print("Simulating", name, args.trials, flush=True)
             result["basis_checks"][name] = verify_values(
                 qc, args.curve, args.prime, lengths, args.trials,
                 args.qM_cofac, args.Mpwp_cofac)
     if args.phase_trials:
         result["phase_checks"] = {}
-        for name, qc in [("published_kss", native)] + ([(best[2], best[3])] if best else []):
+        for name, qc in [("published_kss", native), ("block_cleanup", best[3]), ("manuscript_parallel", parallel_qc)]:
             print("Phase check", name, args.phase_trials, flush=True)
             result["phase_checks"][name] = verify_phases(
                 qc, args.curve, args.prime, lengths, args.phase_trials,

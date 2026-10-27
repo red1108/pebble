@@ -9,6 +9,7 @@ import sys
 
 from fetch_sources import COMMIT as CFS_COMMIT, fetch
 from verify_trace import verify
+from reference_depth import check_reference
 
 HERE = Path(__file__).resolve().parent
 QARTON_COMMIT = "d55356bab03c5b7454915683e052defd9c0f48f6"
@@ -17,6 +18,12 @@ CASES = {
     "p224": ("p224", 262139, (9306464, 7365187, 1165, 1165)),
     "p256": ("p256", 521177, (11559064, 8939833, 1303, 1325)),
     "p256-second-prime": ("p256", 499979, (11640184, 9007225, 1303, 1325)),
+}
+PARALLEL_CASES = {
+    # work, forward-lookup layers, unit-call layers, simultaneous workspace
+    "p224": (7365187, 37, 100, 1165),
+    "p256": (9393163, 36, 105, 1325),
+    "p256-second-prime": (9460555, 36, 105, 1325),
 }
 
 
@@ -34,6 +41,7 @@ def reproduce(name, output):
     benchmark_path = output / f"{name}_benchmark.json"
     cut_path = output / f"{name}_cut.json"
     validation_path = output / f"{name}_validation.json"
+    parallel_validation_path = output / f"{name}_parallel_validation.json"
 
     print(f"{name}: rebuilding circuits and comparing schedules...", flush=True)
     run("cfs_benchmark.py", "--curve", curve, "--prime", prime,
@@ -45,6 +53,9 @@ def reproduce(name, output):
     print(f"{name}: checking circuits, values, phases, and cleanup...", flush=True)
     run("validate_cut_trace.py", benchmark_path, cut_path, "--output", validation_path,
         log=output / f"{name}_validation.log")
+    print(f"{name}: checking the manuscript parallel schedule...", flush=True)
+    run("validate_parallel_trace.py", benchmark_path, "--output", parallel_validation_path,
+        log=output / f"{name}_parallel_validation.log")
 
     validation = json.loads(validation_path.read_text())
     baseline, ours = validation["baseline_summary"], validation["summary"]
@@ -60,17 +71,25 @@ def reproduce(name, output):
     if not cut["cut_audit"]["all_cut_sizes_enumerated"]:
         raise RuntimeError(f"{name}: incomplete cut search")
 
+    parallel = json.loads(parallel_validation_path.read_text())
+    p = parallel['parallel']
+    actual_parallel = (p['work'],p['forward_lookup_depth'],p['kernel_depth'],p['peak_qubits'])
+    if actual_parallel != PARALLEL_CASES[name]:
+        raise RuntimeError(f"{name}: parallel resources {actual_parallel} differ from {PARALLEL_CASES[name]}")
+    reference = check_reference(name, contract)
+
     return dict(curve=curve, prime=prime, leaves=contract["leaves"], cap=contract["cap"],
                 qM_cofac=2, Mpwp_cofac=2, baseline=baseline, ours=ours,
                 reduction_percent=100*(baseline["work"]-ours["work"])/baseline["work"],
                 cut_audit=cut["cut_audit"], basis_trials_per_schedule=validation["basis_trials"],
                 phase_trials_per_schedule=validation["phase_checks"]["superpositions"],
-                independent_parity_trials_per_trace=32)
+                independent_parity_trials_per_trace=32, parallel=parallel,
+                cfs_reference_depth=reference)
 
 
 def print_tables(results):
-    print("\nToffoli/AND counts per RNS prime; peak qubits are equal for both schedules.")
-    print(f"{'Curve':<7} {'Prime':>7} {'CFS work':>13} {'Our work':>13} {'Reduction':>10} {'Peak / cap':>13}")
+    print("\nSequential comparison: Toffoli/AND counts per RNS prime; both schedules have the listed Qarton peak.")
+    print(f"{'Curve':<7} {'Prime':>7} {'CFS work':>13} {'Seq. work':>13} {'Reduction':>10} {'Peak / cap':>13}")
     for row in results.values():
         peak = f"{row['ours']['compiled_qubits']} / {row['cap']}"
         label = "P-" + row["curve"][1:]
@@ -79,11 +98,32 @@ def print_tables(results):
     if "p256" in results:
         row = results["p256"]
         print("\nP-256 / 521177 circuit calls:")
-        print(f"{'Operation':<27} {'CFS':>6} {'Ours':>6}")
+        print(f"{'Operation':<27} {'CFS':>6} {'Sequential':>11} {'Parallel':>9}")
         for label, key in [("Leaf lookup", "P:leaf"), ("Leaf uncomputation", "U:leaf"),
                            ("Add computation", "P:node"), ("Add uncomputation", "U:node"),
                            ("Direct phase correction", "C:node"), ("Root operation", "R:root")]:
-            print(f"{label:<27} {row['baseline']['counts'][key]:>6} {row['ours']['counts'][key]:>6}")
+            print(f"{label:<27} {row['baseline']['counts'][key]:>6} {row['ours']['counts'][key]:>11} "
+                  f"{row['parallel']['summary']['counts'][key]:>9}")
+
+    print("\nDirect manuscript parallel schedule on the fixed CFS tree:")
+    print(f"{'Case':<20} {'Work':>12} {'Reduction':>10} {'Lookup layers':>14} {'Call layers':>12} {'Reserved peak':>14}")
+    for name,row in results.items():
+        p = row['parallel']['parallel']
+        reduction = 100*(1-p['work']/row['baseline']['work'])
+        print(f"{name:<20} {p['work']:>12,} {reduction:>9.2f}% {p['forward_lookup_depth']:>14} "
+              f"{p['kernel_depth']:>12} {p['peak_qubits']:>14}")
+    print("\nCFS depth reference: original serial calls and fixed feasible retimings.")
+    print(f"{'Case':<20} {'CFS serial':>13} {'CFS retimed':>13} {'Seq. block':>13} {'Par. block':>13}")
+    for name,row in results.items():
+        counts = row['baseline']['counts']
+        serial = f"{counts['P:leaf']}/{sum(v for k,v in counts.items() if not k.startswith('G:'))}"
+        ref = row['cfs_reference_depth']
+        retimed = f"{ref['forward']['depth']}/{ref['kernel']['depth']}"
+        counts = row['ours']['counts']
+        seq = f"{counts['P:leaf']}/{sum(v for k,v in counts.items() if not k.startswith('G:'))}"
+        par = row['parallel']['parallel']
+        parallel = f"{par['forward_lookup_depth']}/{par['kernel_depth']}"
+        print(f"{name:<20} {serial:>13} {retimed:>13} {seq:>13} {parallel:>13}")
 
 
 def main():

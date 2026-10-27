@@ -9,15 +9,32 @@ HERE = Path(__file__).resolve().parent
 
 
 @lru_cache(None)
-def build():
-    binary = HERE.parent / "build" / ("cfs-schedule.exe" if os.name == "nt" else "cfs-schedule")
+def build(source="schedule"):
+    assert source in ("schedule", "parallel")
+    binary = HERE.parent / "build" / ("cfs-" + source + (".exe" if os.name == "nt" else ""))
     binary.parent.mkdir(exist_ok=True)
     compiler = shlex.split(os.environ.get("CXX", "c++"))
     if not compiler:
         raise ValueError("CXX must name a C++17 compiler")
-    subprocess.run(compiler + ["-std=c++17", "-O2", "-UNDEBUG", str(HERE / "schedule.cpp"),
+    subprocess.run(compiler + ["-std=c++17", "-O2", "-UNDEBUG", str(HERE / (source + ".cpp")),
                                "-o", str(binary)], check=True)
     return binary
+
+
+def parallel_rounds(height, space):
+    lines = subprocess.check_output([str(build("parallel")), str(height), str(space)],
+                                    text=True).splitlines()
+    count = int(lines[0])
+    assert len(lines) == 1 + 3*count
+    rounds = []
+    for i in range(count):
+        actions = []
+        for line in lines[1+3*i:4+3*i]:
+            values = list(map(int, line.split()))
+            assert values[0] == len(values)-1
+            actions.append(values[1:])
+        rounds.append(actions)
+    return rounds
 
 
 class SharedScheduler:

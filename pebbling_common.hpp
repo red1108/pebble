@@ -9,7 +9,8 @@ using namespace std;
 using Round = QuantumComputer::Round;
 using Schedule = vector<Round>;
 
-inline void run(QuantumComputer& qc, const Schedule& schedule) {
+template<class Computer>
+inline void run(Computer& qc, const Schedule& schedule) {
     for(const auto& round : schedule) qc.execute(round);
 }
 

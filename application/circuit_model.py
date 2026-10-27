@@ -78,3 +78,41 @@ class Model:
             assert all(x == 0 for v, x in state.items() if v != self.root)
         return dict(work=work, peak_qubits=peak, peak_live=peak_live, counts=counts,
                     events=len(trace), state=state)
+
+    def check_rounds(self, rounds, cap):
+        """Check simultaneous supports and scratch, independently of scheduling."""
+        state = dict.fromkeys(self.children, 0)
+        trace = []
+        peak = self.fixed
+        forward = symmetric = 0
+        for row in rounds:
+            ops = row['ops']
+            assert ops
+            touched = set()
+            live = sum(s == 1 for v,s in state.items() if v != self.root)
+            for op,v in ops:
+                assert op in ('P','U','C','R')
+                support = {v,*self.children[v]}
+                assert not touched & support
+                touched.update(support)
+                assert all(state[c] == 1 for c in self.children[v])
+                allowed = (0,2) if op == 'P' else (1,) if op == 'U' else (2,) if op == 'C' else (0,)
+                assert state[v] in allowed
+            used = self.fixed + (live+sum(op == 'P' for op,v in ops))*self.width
+            used += sum(self.cost(op,v).scratch for op,v in ops)
+            assert used <= cap, (used,cap,ops)
+            peak = max(peak,used)
+            forward += any(op == 'P' and v in self.leaves for op,v in ops)
+            symmetric += any(v in self.leaves for op,v in ops)
+            for op,v in ops:
+                state[v] = 1 if op in ('P','R') else 0
+                trace.append((op,v))
+            for v in row['measure']:
+                assert state[v] == 1 and v not in self.leaves and v != self.root
+                state[v] = 2
+                trace.append(('G',v))
+        serial = self.check(trace)
+        assert serial['state'] == state
+        return dict(kernel_depth=len(rounds), forward_lookup_depth=forward,
+                    symmetric_lookup_depth=symmetric, peak_qubits=peak,
+                    work=serial['work'], counts=serial['counts'], trace=trace)

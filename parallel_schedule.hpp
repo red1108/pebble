@@ -120,12 +120,12 @@ inline Schedule clean_small(int x, int r) {
     return out;
 }
 
-inline void parallel_algorithm(QuantumComputer& qc) {
-    int h = qc.height(), s = qc.space_limit();
-    run(qc, parallel_pebble(1, h, s));
+template<class Computer>
+inline void parallel_cleanup(Computer& qc, int b) {
+    int h = qc.height();
     if(h==1) return;
 
-    int b = s-1, r = h-1;
+    int r = h-1;
     vector<int> forest = {2, 3};
     while(true) {
         int batch_size = min((int)forest.size(), max(1, b/stage_space(r)));
@@ -149,4 +149,10 @@ inline void parallel_algorithm(QuantumComputer& qc) {
         forest = std::move(next);
         r -= k;
     }
+}
+
+template<class Computer>
+inline void parallel_algorithm(Computer& qc) {
+    run(qc, parallel_pebble(1, qc.height(), qc.space_limit()));
+    parallel_cleanup(qc, qc.space_limit()-1);
 }
