@@ -17,7 +17,8 @@ def main():
     for kind in ('kmrv', 'parallel'):
         binary = BUILD / kind
         subprocess.run(shlex.split(os.environ.get('CXX', 'c++')) + [
-            '-std=c++17', '-O2', '-UNDEBUG', str(ROOT / (kind + '.cpp')),
+            '-std=c++17', '-O2', '-UNDEBUG', '-I', str(ROOT / 'core'),
+            str(ROOT / 'cli' / (kind + '.cpp')),
             '-o', str(binary)], check=True)
         binaries[kind] = binary
     expected = json.loads((HERE / 'expected.json').read_text())

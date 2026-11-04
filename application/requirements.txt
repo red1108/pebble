@@ -1,4 +1,0 @@
-git+https://gitlab.inria.fr/capsule/qarton.git@d55356bab03c5b7454915683e052defd9c0f48f6
-sympy==1.14.0
-tabulate==0.10.0
-tqdm==4.70.0

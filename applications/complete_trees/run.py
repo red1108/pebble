@@ -15,7 +15,7 @@ def main():
     BUILD.mkdir(parents=True, exist_ok=True)
     binary = BUILD / 'measure'
     subprocess.run(shlex.split(os.environ.get('CXX', 'c++')) + [
-        '-std=c++17', '-O2', '-UNDEBUG', '-I', str(ROOT),
+        '-std=c++17', '-O2', '-UNDEBUG', '-I', str(ROOT / 'core'),
         str(HERE / 'measure.cpp'), '-o', str(binary)], check=True)
     expected = json.loads((HERE / 'expected.json').read_text())
     result = []

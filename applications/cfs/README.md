@@ -21,7 +21,7 @@ remain enabled.
 The code obtains each CFS tree and the public KSS ordering from the pinned
 source. It translates direct phase corrections to a pebble and an unpebble,
 and translates the root to a retained coordinate triple. Our schedule uses
-the shared `sequential_schedule.hpp` block contraction and recursive cleanup
+the shared `core/sequential_schedule.hpp` block contraction and recursive cleanup
 through the unit-cost adapter in `schedule.cpp`.
 It chooses a feasible boundary minimizing work within this procedure, not
 among arbitrary pebbling strategies. Both schedules are checked with the same

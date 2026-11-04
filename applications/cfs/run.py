@@ -280,8 +280,8 @@ def main():
     # The adapter emits unit-cost actions from the shared scheduler.
     binary=BUILD/'unit_schedule'
     compiler=shlex.split(os.environ.get('CXX', 'c++'))
-    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO),str(HERE/'schedule.cpp'),'-o',str(binary)],check=True)
-    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO),str(HERE/'check_trace.cpp'),'-o',str(BUILD/'check_trace')],check=True)
+    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO/'core'),str(HERE/'schedule.cpp'),'-o',str(binary)],check=True)
+    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO/'core'),str(HERE/'check_trace.cpp'),'-o',str(BUILD/'check_trace')],check=True)
     result=dict(model=dict(work='P+U',space='value registers including leaves and the retained root',depth='every nonempty sequential action is a round',endpoint='root coordinate triple retained, all other values and ghosts removed'),
                 root_scope='Coherent coordinate-tree evaluation; common residue extraction/accumulator update is outside this comparison.',
                 baseline='Public CFS KSS ordering, with direct corrections expanded to P,U and root represented by a retained value.',
@@ -328,7 +328,7 @@ def main():
         result['cases'].append(row)
         (OUT/'cfs.json').write_text(json.dumps(result,indent=2)+'\n')
         print(curve,'leaves',len(model.leaves),'space',b['space'],'work',b['work'],'->',ours['work'],'reduction',row['reduction_percent'],flush=True)
-    files=[HERE/'run.py',HERE/'check_trace.cpp',REPO/'sequential_schedule.hpp',REPO/'quantum_computer.hpp',REPO/'pebbling_common.hpp',APP/'schedule.cpp',APP/'shared_scheduler.py',SOURCE/'ecdlp/curve_params.py',SOURCE/'ecdlp/util.py',SOURCE/'rns_addition_tree_run.py']
+    files=[HERE/'run.py',HERE/'check_trace.cpp',REPO/'core'/'sequential_schedule.hpp',REPO/'core'/'quantum_computer.hpp',REPO/'core'/'pebbling_common.hpp',APP/'schedule.cpp',APP/'shared_scheduler.py',SOURCE/'ecdlp/curve_params.py',SOURCE/'ecdlp/util.py',SOURCE/'rns_addition_tree_run.py']
     result['source_sha256']={str(p.relative_to(REPO)) if p.is_relative_to(REPO) else 'cfs/'+str(p.relative_to(SOURCE)): hashlib.sha256(p.read_bytes()).hexdigest() for p in files}
     result['cfs_revision']=subprocess.check_output(['git','-C',str(SOURCE),'rev-parse','HEAD'],text=True).strip()
     result['validation_summary']=dict(arithmetic_inputs_per_curve=4,measurement_masks_per_input=8,paired_schedule_replays=4*8*len(specifications),native_state_machine_replays=2*len(specifications),checks=['all action preconditions','old and new value-register occupancy','final root and complete cleanup','actual CFS arithmetic values','root residue agrees with author reference','phase cancellation','C++ recursive core equals chosen block composition'])
