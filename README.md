@@ -34,10 +34,12 @@ results are written under `build/` and are not tracked.
 
 ## Algorithms and cost model
 
-The complete-tree implementations are `kss.cpp`, `sequential.cpp`, and
-`parallel.cpp`. `kmrv.cpp` implements the retained-output prefix-path baseline
-and its input preparation and cleanup. The shared schedules are in
-`sequential_schedule.hpp` and `parallel_schedule.hpp`. The separate
+The command-line entry points are `kss.cpp`, `sequential.cpp`, and
+`parallel.cpp`. The shared sequential operations and complete-tree boundary
+selection are in `sequential_schedule.hpp` and `complete_tree_schedule.hpp`;
+the KSS baseline is in `kss_schedule.hpp`. The parallel schedule is in
+`parallel_schedule.hpp`. `kmrv.cpp` implements the retained-output prefix-path
+baseline and its input preparation and cleanup. The separate
 `parallel_optimized.cpp` is experimental and is not the manuscript algorithm.
 
 - **Work:** pebble placements and uncomputations; ghosting has zero work.
@@ -51,6 +53,24 @@ and its input preparation and cleanup. The shared schedules are in
 The fixed-tree algorithms do not require associativity. The comparison with
 KMRV assumes an associative operation and preserves the input order, allowing
 the two methods to use different evaluation trees.
+
+The sequential complete-tree schedule can also be called directly from C++:
+
+```cpp
+#include "complete_tree_schedule.hpp"
+
+int main() {
+    int height = 10, space = 11;
+    QuantumComputer computer(height, space);
+    fast_clean(computer, 1, height, space, true);
+    check_final(computer);
+    print_metrics(computer);
+}
+```
+
+The CFS application supplies its own tree and boundary choices to the shared
+block cleanup in `sequential_schedule.hpp`. The core scheduler does not depend
+on the CFS implementation.
 
 For individual runs, compile with a C++17 compiler and keep assertions enabled:
 

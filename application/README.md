@@ -1,8 +1,9 @@
-# RNS point-addition application
+# Earlier RNS circuit-cost experiments
 
-Reproduce the application results in [*Optimal (Parallel) Spooky Pebbling on
-Binary Trees*](https://arxiv.org/abs/2610.09434). The comparison uses the public
-circuits of Chevignard, Fouque, and Schrottenloher (CFS), replacing their
+This directory preserves earlier circuit-cost experiments. They are separate
+from the current manuscript's Section 6.3, whose unit-cost reproduction is in
+[`applications/cfs/`](../applications/cfs/README.md). The experiments here use
+the public circuits of Chevignard, Fouque, and Schrottenloher (CFS), replacing their
 schedule with block cleanup while keeping the tree, leaf order, arithmetic
 circuits, root operation, and space budget fixed.
 
@@ -132,7 +133,7 @@ Its results do not replace the direct manuscript parallel schedule.
 
 | File | Purpose |
 |---|---|
-| [reproduce.py](reproduce.py) | Rebuild and verify all paper tables |
+| [reproduce.py](reproduce.py) | Rebuild and verify the experiment tables |
 | [cfs_benchmark.py](cfs_benchmark.py) | Compile circuits and export costs and traces |
 | [cut_planner.py](cut_planner.py) | Choose sequential block boundaries |
 | [shared_scheduler.py](shared_scheduler.py), [schedule.cpp](schedule.cpp) | Call the shared sequential C++ routines |

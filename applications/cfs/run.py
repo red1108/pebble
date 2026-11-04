@@ -277,18 +277,10 @@ def replay_values(model,trace,curve,prime,indices,seed):
 def main():
     BUILD.mkdir(parents=True, exist_ok=True)
     OUT.mkdir(parents=True, exist_ok=True)
-    # The adapter changes only translations of root output and clear().
-    # contract() and fast_clean() are the original shared C++ templates.
-    source=(APP/'schedule.cpp').read_text()
-    assert source.count("trace.push_back({x==root ? 'R' : 'P', x});")==1
-    assert source.count("trace.push_back({'C', x});")==1
-    source=source.replace('#include "../sequential_schedule.hpp"','#include "sequential_schedule.hpp"')
-    source=source.replace("trace.push_back({x==root ? 'R' : 'P', x});","trace.push_back({'P', x});")
-    source=source.replace("trace.push_back({'C', x});","pebble(x); unpebble(x);")
-    (BUILD/'unit_schedule.cpp').write_text(source)
+    # The adapter emits unit-cost actions from the shared scheduler.
     binary=BUILD/'unit_schedule'
     compiler=shlex.split(os.environ.get('CXX', 'c++'))
-    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO),str(BUILD/'unit_schedule.cpp'),'-o',str(binary)],check=True)
+    subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO),str(HERE/'schedule.cpp'),'-o',str(binary)],check=True)
     subprocess.run(compiler+['-std=c++17','-O2','-UNDEBUG','-I',str(REPO),str(HERE/'check_trace.cpp'),'-o',str(BUILD/'check_trace')],check=True)
     result=dict(model=dict(work='P+U',space='value registers including leaves and the retained root',depth='every nonempty sequential action is a round',endpoint='root coordinate triple retained, all other values and ghosts removed'),
                 root_scope='Coherent coordinate-tree evaluation; common residue extraction/accumulator update is outside this comparison.',

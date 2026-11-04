@@ -1,4 +1,4 @@
-#include "../sequential_schedule.hpp"
+#include "sequential_schedule.hpp"
 #include <array>
 #include <cassert>
 #include <iostream>
@@ -7,7 +7,7 @@
 #include <utility>
 using namespace std;
 
-// Translate shared scheduling calls into the public circuit operations.
+// Translate the shared scheduler into the manuscript's unit-cost actions.
 struct CircuitTrace {
     int root;
     vector<array<int, 2>> tree;
@@ -15,10 +15,10 @@ struct CircuitTrace {
 
     bool leaf(int x) const { return tree[x][0]==0; }
     array<int, 2> children(int x) const { return tree[x]; }
-    void pebble(int x) { trace.push_back({x==root ? 'R' : 'P', x}); }
+    void pebble(int x) { trace.push_back({'P', x}); }
     void unpebble(int x) { trace.push_back({'U', x}); }
     void measure(int x) { trace.push_back({'G', x}); }
-    void clear(int x) { trace.push_back({'C', x}); } // direct phase correction
+    void clear(int x) { pebble(x); unpebble(x); }
 };
 
 void top_block(const CircuitTrace& qc, int x, const vector<bool>& boundary, vector<int>& top) {

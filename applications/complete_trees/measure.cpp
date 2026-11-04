@@ -19,16 +19,8 @@ struct Recorder : QuantumComputer {
     void clear(int v) { pebble(v); unpebble(v); }
 };
 
-#define main unused_sequential_main
-#define QuantumComputer Recorder
-#include "sequential.cpp"
-#undef QuantumComputer
-#undef main
-#define main unused_kss_main
-#define QuantumComputer Recorder
-#include "kss.cpp"
-#undef QuantumComputer
-#undef main
+#include "complete_tree_schedule.hpp"
+#include "kss_schedule.hpp"
 #include "parallel_schedule.hpp"
 
 int main(int argc, char** argv) {
