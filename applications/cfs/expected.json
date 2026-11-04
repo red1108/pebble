@@ -1,0 +1,34 @@
+[
+  {
+    "curve": "p224",
+    "prime": 262139,
+    "leaves": 17,
+    "space": 7,
+    "kss_work": 203,
+    "ours_work": 135
+  },
+  {
+    "curve": "p256",
+    "prime": 521177,
+    "leaves": 19,
+    "space": 7,
+    "kss_work": 238,
+    "ours_work": 159
+  },
+  {
+    "curve": "p384",
+    "prime": 1048573,
+    "leaves": 28,
+    "space": 7,
+    "kss_work": 395,
+    "ours_work": 272
+  },
+  {
+    "curve": "p521",
+    "prime": 2097143,
+    "leaves": 36,
+    "space": 8,
+    "kss_work": 547,
+    "ours_work": 321
+  }
+]

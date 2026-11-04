@@ -1,0 +1,210 @@
+[
+  {
+    "height": 5,
+    "budget": 6,
+    "kss": {
+      "work": 191,
+      "depth": 225,
+      "area": 807,
+      "peak": 6
+    },
+    "ours": {
+      "work": 142,
+      "depth": 163,
+      "area": 601,
+      "peak": 6
+    }
+  },
+  {
+    "height": 6,
+    "budget": 7,
+    "kss": {
+      "work": 479,
+      "depth": 577,
+      "area": 2247,
+      "peak": 7
+    },
+    "ours": {
+      "work": 351,
+      "depth": 413,
+      "area": 1643,
+      "peak": 7
+    }
+  },
+  {
+    "height": 7,
+    "budget": 8,
+    "kss": {
+      "work": 1151,
+      "depth": 1409,
+      "area": 5895,
+      "peak": 8
+    },
+    "ours": {
+      "work": 707,
+      "depth": 841,
+      "area": 4051,
+      "peak": 8
+    }
+  },
+  {
+    "height": 8,
+    "budget": 9,
+    "kss": {
+      "work": 2687,
+      "depth": 3329,
+      "area": 14855,
+      "peak": 9
+    },
+    "ours": {
+      "work": 1683,
+      "depth": 2025,
+      "area": 9971,
+      "peak": 9
+    }
+  },
+  {
+    "height": 9,
+    "budget": 10,
+    "kss": {
+      "work": 6143,
+      "depth": 7681,
+      "area": 36359,
+      "peak": 10
+    },
+    "ours": {
+      "work": 3477,
+      "depth": 4221,
+      "area": 22935,
+      "peak": 10
+    }
+  },
+  {
+    "height": 10,
+    "budget": 11,
+    "kss": {
+      "work": 13823,
+      "depth": 17409,
+      "area": 87047,
+      "peak": 11
+    },
+    "ours": {
+      "work": 7654,
+      "depth": 9371,
+      "area": 53549,
+      "peak": 11
+    }
+  },
+  {
+    "height": 11,
+    "budget": 12,
+    "kss": {
+      "work": 30719,
+      "depth": 38913,
+      "area": 204807,
+      "peak": 12
+    },
+    "ours": {
+      "work": 15966,
+      "depth": 19647,
+      "area": 122265,
+      "peak": 12
+    }
+  },
+  {
+    "height": 12,
+    "budget": 13,
+    "kss": {
+      "work": 67583,
+      "depth": 86017,
+      "area": 475143,
+      "peak": 13
+    },
+    "ours": {
+      "work": 34390,
+      "depth": 42575,
+      "area": 277177,
+      "peak": 13
+    }
+  },
+  {
+    "height": 13,
+    "budget": 14,
+    "kss": {
+      "work": 147455,
+      "depth": 188417,
+      "area": 1089543,
+      "peak": 14
+    },
+    "ours": {
+      "work": 70515,
+      "depth": 87601,
+      "area": 626023,
+      "peak": 14
+    }
+  },
+  {
+    "height": 14,
+    "budget": 15,
+    "kss": {
+      "work": 319487,
+      "depth": 409601,
+      "area": 2473991,
+      "peak": 15
+    },
+    "ours": {
+      "work": 149756,
+      "depth": 186823,
+      "area": 1396865,
+      "peak": 15
+    }
+  },
+  {
+    "height": 15,
+    "budget": 16,
+    "kss": {
+      "work": 688127,
+      "depth": 884737,
+      "area": 5570567,
+      "peak": 16
+    },
+    "ours": {
+      "work": 308437,
+      "depth": 385453,
+      "area": 3137531,
+      "peak": 16
+    }
+  },
+  {
+    "height": 16,
+    "budget": 17,
+    "kss": {
+      "work": 1474559,
+      "depth": 1900545,
+      "area": 12451847,
+      "peak": 17
+    },
+    "ours": {
+      "work": 648405,
+      "depth": 813485,
+      "area": 6871035,
+      "peak": 17
+    }
+  },
+  {
+    "height": 17,
+    "budget": 18,
+    "kss": {
+      "work": 3145727,
+      "depth": 4063233,
+      "area": 27656199,
+      "peak": 18
+    },
+    "ours": {
+      "work": 1331668,
+      "depth": 1675119,
+      "area": 14910941,
+      "peak": 18
+    }
+  }
+]

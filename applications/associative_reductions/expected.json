@@ -1,0 +1,158 @@
+[
+  {
+    "height": 5,
+    "budget": 8,
+    "kmrv": {
+      "work": 118,
+      "depth": 46
+    },
+    "ours": {
+      "work": 115,
+      "depth": 50
+    }
+  },
+  {
+    "height": 6,
+    "budget": 10,
+    "kmrv": {
+      "work": 259,
+      "depth": 104
+    },
+    "ours": {
+      "work": 291,
+      "depth": 105
+    }
+  },
+  {
+    "height": 7,
+    "budget": 13,
+    "kmrv": {
+      "work": 589,
+      "depth": 187
+    },
+    "ours": {
+      "work": 707,
+      "depth": 185
+    }
+  },
+  {
+    "height": 8,
+    "budget": 15,
+    "kmrv": {
+      "work": 1272,
+      "depth": 401
+    },
+    "ours": {
+      "work": 1427,
+      "depth": 340
+    }
+  },
+  {
+    "height": 9,
+    "budget": 18,
+    "kmrv": {
+      "work": 2804,
+      "depth": 749
+    },
+    "ours": {
+      "work": 2859,
+      "depth": 569
+    }
+  },
+  {
+    "height": 10,
+    "budget": 20,
+    "kmrv": {
+      "work": 6003,
+      "depth": 1602
+    },
+    "ours": {
+      "work": 5739,
+      "depth": 1069
+    }
+  },
+  {
+    "height": 11,
+    "budget": 23,
+    "kmrv": {
+      "work": 12990,
+      "depth": 3015
+    },
+    "ours": {
+      "work": 13419,
+      "depth": 2080
+    }
+  },
+  {
+    "height": 12,
+    "budget": 25,
+    "kmrv": {
+      "work": 27683,
+      "depth": 6177
+    },
+    "ours": {
+      "work": 26987,
+      "depth": 3678
+    }
+  },
+  {
+    "height": 13,
+    "budget": 28,
+    "kmrv": {
+      "work": 59036,
+      "depth": 12116
+    },
+    "ours": {
+      "work": 61803,
+      "depth": 7879
+    }
+  },
+  {
+    "height": 14,
+    "budget": 30,
+    "kmrv": {
+      "work": 124623,
+      "depth": 24655
+    },
+    "ours": {
+      "work": 123755,
+      "depth": 15119
+    }
+  },
+  {
+    "height": 15,
+    "budget": 32,
+    "kmrv": {
+      "work": 264370,
+      "depth": 51427
+    },
+    "ours": {
+      "work": 216539,
+      "depth": 24819
+    }
+  },
+  {
+    "height": 16,
+    "budget": 35,
+    "kmrv": {
+      "work": 554813,
+      "depth": 99045
+    },
+    "ours": {
+      "work": 433627,
+      "depth": 45726
+    }
+  },
+  {
+    "height": 17,
+    "budget": 37,
+    "kmrv": {
+      "work": 1169932,
+      "depth": 205370
+    },
+    "ours": {
+      "work": 990683,
+      "depth": 94824
+    }
+  }
+]
